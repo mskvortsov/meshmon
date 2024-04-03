@@ -1,0 +1,62 @@
+body {
+    background-color: #232327;
+    color: #b1b1b3;
+}
+thead, tbody {
+    font-family: monospace;
+}
+
+table, th, td {
+    white-space: nowrap;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+thead tr {
+    text-align: center;
+}
+thead {
+    position: sticky;
+    top: 0;
+}
+tbody tr {
+    text-align: right;
+}
+.decoded td {
+    text-align: left;
+    font-size: 80%;
+}
+
+.main-table {
+    border-collapse: collapse;
+    border: none;
+}
+.main-table td {
+    border: 1px solid #444444;
+}
+.main-table tr:first-child td {
+    border-top: none;
+}
+.main-table tr:last-child td {
+    border-bottom: none;
+}
+.main-table tr td:first-child {
+    border-left: none;
+}
+.main-table tr td:last-child {
+    border-right: none;
+}
+
+.main-table thead tr {
+    background: #000000;
+}
+
+.main-table tbody tr:nth-child(odd) {
+    background: #333333;
+}
+
+.status-disconnected {
+    background-color: #ea7a6c;
+}
+.status-connected {
+    background-color: #2ea043;
+}

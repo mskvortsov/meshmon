@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8"/>
+        <title>Meshtastic Monitor</title>
+        <link rel="icon" type="image/x-icon" href="https://meshtastic.org/design/web/favicon.ico">
+        <link rel="stylesheet" href="meshmon.css">
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.5.0/mqtt.min.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/protobufjs/7.2.6/protobuf.min.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+        <script type="text/javascript" src="meshmon.js"></script>
+    </head>
+    <body>
+        <table class="main-table">
+            <thead>
+                <tr id="thead-row"></tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+            <tfoot>
+                <tr id="status-row" class="status-disconnected">
+                    <td id="status-cell"></td>
+                </tr>
+                <tr>
+                    <td id="input-cell">
+                        <label for="mqtt-url">MQTT URL:</label>
+                        <input id="mqtt-url" type="text"/>
+                        <label for="mqtt-topic">Topic:</label>
+                        <input id="mqtt-topic" type="text"/>
+                        <button id="mqtt-connect">Connect</button>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </body>
+</html>
