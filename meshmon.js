@@ -12,6 +12,8 @@ var mqttClient     = null;
 var tbody = null;
 var statusRow = null;
 var connectButton = null;
+var filterInput = null;
+var filterExpr = (_h) => { return true; };
 
 function formatTime(v) {
     const t = new Date(v * 1000);
@@ -172,7 +174,7 @@ function mqttOnDisconnect() {
     statusRow.className = 'status-disconnected';
 }
 
-function onClick() {
+function onClickConnect() {
     connectButton.disabled = true;
     if (mqttConnected) {
         mqttClient.end(false, null, mqttOnDisconnect);
@@ -191,58 +193,21 @@ const fields = [
     'wantAck', 'viaMqtt', 'rxRssi', 'rxSnr', 'from', 'to', 'portnum',
 ];
 
-function mqttOnMessage(topic, message) {
-    var se = null;
-    try {
-        se = meshtastic.ServiceEnvelope.decode(message);
-    } catch (error) {
-        console.error(`Failed to decode ServiceEnvelope: ${error}`);
-        console.error(`Topic: ${topic}`);
-        console.error(`Message: x${arrayToString(message)}`);
-        return;
-    }
-
+function render(se) {
     var row = tbody.insertRow();
-    var cells = {};
     fields.forEach((field) => {
-        cells[field] = row.insertCell();
+        row.insertCell().innerHTML = se.header[field];
     });
 
-    cells['rxTime'].innerHTML    = formatTime(se.packet.rxTime);
-    cells['gatewayId'].innerHTML = se.gatewayId;
-    cells['channelId'].innerHTML = se.channelId;
-    cells['id'].innerHTML        = se.packet.id.toString(16).padStart(8, '0');
-    cells['hopStart'].innerHTML  = se.packet.hopStart;
-    cells['hopLimit'].innerHTML  = se.packet.hopLimit;
-    cells['wantAck'].innerHTML   = se.packet.wantAck ? '1' : '0';
-    cells['viaMqtt'].innerHTML   = se.packet.viaMqtt ? '1' : '0';
-    cells['rxRssi'].innerHTML    = se.packet.rxRssi;
-    cells['rxSnr'].innerHTML     = se.packet.rxSnr;
-    cells['from'].innerHTML      = formatNodeId(se.packet.from);
-    cells['to'].innerHTML        = formatNodeId(se.packet.to);
-
-    if (se.packet.payloadVariant == 'encrypted' && se.channelId == 'LongFast') {
-        decodeEncrypted(se.packet, defaultKey);
-    }
-
-    var row = tbody.insertRow();
-    row.className = 'decoded';
-    var cell = row.insertCell();
-    cell.colSpan = fields.length;
-    var decoded = document.createElement('pre');
-    cell.appendChild(decoded);
-
-    var decodedText = "";
+    var decodedText = '';
     if (se.packet.encrypted) {
         decodedText += `x${arrayToString(se.packet.encrypted)} Encrypted\n`;
     }
 
     if (se.packet.decoded) {
-        decodedText += `x${arrayToString(se.packet.decoded.payload)} `
+        decodedText += `x${arrayToString(se.packet.decoded.payload)} Decrypted `
 
         const port = se.packet.decoded.portnum;
-        cells['portnum'].innerHTML = port;
-
         var decode = null;
         if (port in meshtastic.protos) {
             decode = meshtastic.protos[port].decode;
@@ -257,11 +222,76 @@ function mqttOnMessage(topic, message) {
         } else {
             decodedText += `NYI ${port}`;
         }
-    } else {
-        cells['portnum'].innerHTML = '?';
     }
-    decoded.textContent = decodedText;
 
+    var row = tbody.insertRow();
+    row.className = 'decoded';
+    var cell = row.insertCell();
+    cell.colSpan = fields.length;
+    var decoded = document.createElement('pre');
+    cell.appendChild(decoded);
+    decoded.textContent = decodedText;
+}
+
+var db = [];
+
+function mqttOnMessage(topic, message) {
+    var se = null;
+    try {
+        se = meshtastic.ServiceEnvelope.decode(message);
+    } catch (error) {
+        console.error(`Failed to decode ServiceEnvelope: ${error}`);
+        console.error(`Topic: ${topic}`);
+        console.error(`Message: x${arrayToString(message)}`);
+        return;
+    }
+
+    if (se.packet.payloadVariant == 'encrypted' && se.channelId == 'LongFast') {
+        decodeEncrypted(se.packet, defaultKey);
+    }
+    se.header = {};
+    se.header.rxTime    = formatTime(se.packet.rxTime);
+    se.header.gatewayId = se.gatewayId;
+    se.header.channelId = se.channelId;
+    se.header.id        = se.packet.id.toString(16).padStart(8, '0');
+    se.header.hopStart  = se.packet.hopStart;
+    se.header.hopLimit  = se.packet.hopLimit;
+    se.header.wantAck   = se.packet.wantAck ? '1' : '0';
+    se.header.viaMqtt   = se.packet.viaMqtt ? '1' : '0';
+    se.header.rxRssi    = se.packet.rxRssi;
+    se.header.rxSnr     = se.packet.rxSnr;
+    se.header.from      = formatNodeId(se.packet.from);
+    se.header.to        = formatNodeId(se.packet.to);
+    if (se.packet.decoded) {
+        se.header.portnum = se.packet.decoded.portnum;;
+    } else {
+        se.header.portnum = '?';
+    }
+    db.push(se);
+
+    if (filterExpr(se.header)) {
+        render(se);
+    }
+
+    window.scrollTo(0, document.body.scrollHeight);
+}
+
+function onFilterEnter() {
+    filterInput.disabled = true;
+    if (filterInput.value == '') {
+        filterExpr = (_h) => { return true; };
+    } else {
+        filterExpr = eval?.(`(h) => { with (h) { return ${filterInput.value}; } }`);
+    }
+
+    tbody.innerHTML = '';
+    db.forEach((se) => {
+        if (filterExpr(se.header)) {
+            render(se);
+        }
+    });
+
+    filterInput.disabled = false;
     window.scrollTo(0, document.body.scrollHeight);
 }
 
@@ -276,7 +306,8 @@ window.onload = function() {
 
     statusRow = document.getElementById('status-row');
     document.getElementById('status-cell').colSpan = fields.length;
-    document.getElementById('input-cell').colSpan = fields.length;
+    document.getElementById('connect-cell').colSpan = fields.length;
+    document.getElementById('filter-cell').colSpan = fields.length;
 
     mqttUrlInput = document.getElementById('mqtt-url');
     mqttUrlInput.placeholder = defaultMqttUrl;
@@ -287,5 +318,16 @@ window.onload = function() {
     mqttTopicInput.defaultValue = defaultMqttTopic;
 
     connectButton = document.getElementById('mqtt-connect');
-    connectButton.addEventListener('click', onClick);
+    connectButton.addEventListener('click', onClickConnect);
+
+    filterInput = document.getElementById('filter-expr-input');
+    filterInput.placeholder = 'Filter: a JavaScript expression over header fields, ' +
+        'e.g. "channelId == \'LongFast\' && to != \'!ffffffff\'"';
+    filterInput.addEventListener('keypress', function(e) {
+        if (e.key == 'Enter') {
+            onFilterEnter();
+        }
+    });
+
+    connectButton.click();
 };

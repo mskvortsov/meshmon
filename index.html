@@ -13,6 +13,11 @@
     <body>
         <table class="main-table">
             <thead>
+                <tr>
+                    <td id="filter-cell">
+                        <input id="filter-expr-input" type="text"/>
+                    </td>
+                </tr>
                 <tr id="thead-row"></tr>
             </thead>
             <tbody id="tbody"></tbody>
@@ -21,10 +26,10 @@
                     <td id="status-cell"></td>
                 </tr>
                 <tr>
-                    <td id="input-cell">
-                        <label for="mqtt-url">MQTT URL:</label>
+                    <td id="connect-cell">
+                        <label for="mqtt-url">MQTT URL</label>
                         <input id="mqtt-url" type="text"/>
-                        <label for="mqtt-topic">Topic:</label>
+                        <label for="mqtt-topic">Topic</label>
                         <input id="mqtt-topic" type="text"/>
                         <button id="mqtt-connect">Connect</button>
                     </td>

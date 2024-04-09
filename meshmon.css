@@ -1,31 +1,22 @@
 body {
+    color-scheme: dark;
     background-color: #232327;
     color: #b1b1b3;
-}
-thead, tbody {
-    font-family: monospace;
+    font-family: sans-serif;
 }
 
-table, th, td {
+.main-table table, th, td {
     white-space: nowrap;
     padding-left: 8px;
     padding-right: 8px;
 }
-thead tr {
-    text-align: center;
-}
-thead {
+.main-table thead {
     position: sticky;
     top: 0;
 }
-tbody tr {
-    text-align: right;
+.main-table thead, tbody {
+    font-family: monospace;
 }
-.decoded td {
-    text-align: left;
-    font-size: 80%;
-}
-
 .main-table {
     border-collapse: collapse;
     border: none;
@@ -45,15 +36,24 @@ tbody tr {
 .main-table tr td:last-child {
     border-right: none;
 }
-
 .main-table thead tr {
+    text-align: center;
     background: #000000;
 }
-
+.main-table tbody tr {
+    text-align: right;
+}
 .main-table tbody tr:nth-child(odd) {
     background: #333333;
 }
 
+.decoded td {
+    text-align: left;
+    font-size: 80%;
+}
+#filter-expr-input {
+    width: 100%;
+}
 .status-disconnected {
     background-color: #ea7a6c;
 }
