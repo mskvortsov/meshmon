@@ -3,6 +3,7 @@
 const defaultMqttUrl = 'wss://mqtt.eclipseprojects.io/mqtt';
 const defaultMqttTopic = 'marsupial';
 const defaultKey = CryptoJS.enc.Base64.parse('1PG7OiApB1nwvP+rz05pAQ==');
+const protobufsUrl = 'https://raw.githubusercontent.com/meshtastic/protobufs/v2.3.4';
 
 var mqttUrlInput   = null;
 var mqttTopicInput = null;
@@ -67,7 +68,7 @@ function decodeText(_proto, name, payload) {
 function buildMeshtasticProtos() {
     var protobuf_root = new protobuf.Root();
     protobuf_root.resolvePath = function(_origin, target) {
-        return 'protobufs/' + target;
+        return `${protobufsUrl}/${target}`;
     };
 
     const modules = ['meshtastic/mqtt.proto', 'meshtastic/storeforward.proto'];
