@@ -193,6 +193,21 @@ const fields = [
     'rxTime', 'gatewayId', 'channelId', 'id', 'hopStart', 'hopLimit',
     'wantAck', 'viaMqtt', 'rxRssi', 'rxSnr', 'from', 'to', 'portnum',
 ];
+const dummyHeader = {
+    rxTime: '1970-01-01T00:00:00.000Z',
+    gatewayId: '!00000000',
+    channelId: 'LongFast',
+    id: '00000000',
+    hopStart: 0,
+    hopLimit: 0,
+    wantAck: '0',
+    viaMqtt: '0',
+    rxRssi: 0,
+    rxSnr: 0,
+    from: '!00000000',
+    to: '!00000000',
+    portnum: '?',
+};
 
 function render(se) {
     var row = tbody.insertRow();
@@ -281,8 +296,23 @@ function onFilterEnter() {
     filterInput.disabled = true;
     if (filterInput.value == '') {
         filterExpr = (_h) => { return true; };
+        filterInput.classList.remove('filter-ok');
+        filterInput.classList.remove('filter-error');
     } else {
-        filterExpr = eval?.(`(h) => { with (h) { return ${filterInput.value}; } }`);
+        const newFilterExpr = eval?.(`(h) => {
+            with (h) {
+                return ${filterInput.value};
+            }
+        }`);
+        try {
+            newFilterExpr(dummyHeader);
+            filterExpr = newFilterExpr;
+            filterInput.classList.remove('filter-error');
+            filterInput.classList.add('filter-ok');
+        } catch {
+            filterInput.classList.remove('filter-ok');
+            filterInput.classList.add('filter-error');
+        }
     }
 
     tbody.innerHTML = '';

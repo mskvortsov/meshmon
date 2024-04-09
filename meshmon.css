@@ -60,3 +60,9 @@ body {
 .status-connected {
     background-color: #2ea043;
 }
+.filter-ok {
+    background-color: #005596;
+}
+.filter-error {
+    background-color: #4b2f36;
+}
