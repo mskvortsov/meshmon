@@ -194,19 +194,19 @@ const fields = [
     'wantAck', 'viaMqtt', 'rxRssi', 'rxSnr', 'from', 'to', 'portnum',
 ];
 const dummyHeader = {
-    rxTime: '1970-01-01T00:00:00.000Z',
+    rxTime: new Date(0).toISOString(),
     gatewayId: '!00000000',
-    channelId: 'LongFast',
+    channelId: 'LongChannelName',
     id: '00000000',
     hopStart: 0,
     hopLimit: 0,
     wantAck: '0',
     viaMqtt: '0',
-    rxRssi: 0,
-    rxSnr: 0,
+    rxRssi: -120,
+    rxSnr: -20.25,
     from: '!00000000',
     to: '!00000000',
-    portnum: '?',
+    portnum: '75',
 };
 
 function render(se) {
@@ -333,9 +333,12 @@ function onClickClear() {
 
 window.onload = function() {
     var theadRow = document.getElementById('thead-row');
+    var fitRow = document.getElementById('fit-row');
     fields.forEach((field) => {
         var th = theadRow.insertCell();
         th.innerHTML = field;
+        var tf = fitRow.insertCell();
+        tf.innerHTML = dummyHeader[field];
     });
 
     tbody = document.getElementById('tbody');
