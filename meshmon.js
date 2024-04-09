@@ -295,6 +295,11 @@ function onFilterEnter() {
     window.scrollTo(0, document.body.scrollHeight);
 }
 
+function onClickClear() {
+    db = [];
+    tbody.innerHTML = '';
+}
+
 window.onload = function() {
     var theadRow = document.getElementById('thead-row');
     fields.forEach((field) => {
@@ -319,6 +324,9 @@ window.onload = function() {
 
     connectButton = document.getElementById('mqtt-connect');
     connectButton.addEventListener('click', onClickConnect);
+
+    var clearButton = document.getElementById('clear');
+    clearButton.addEventListener('click', onClickClear);
 
     filterInput = document.getElementById('filter-expr-input');
     filterInput.placeholder = 'Filter: a JavaScript expression over header fields, ' +
