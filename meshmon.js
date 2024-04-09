@@ -285,11 +285,14 @@ function mqttOnMessage(topic, message) {
     }
     db.push(se);
 
+    const scrollDown = window.scrollY + window.innerHeight + 42 > document.body.scrollHeight;
     if (filterExpr(se.header)) {
         render(se);
     }
 
-    window.scrollTo(0, document.body.scrollHeight);
+    if (scrollDown) {
+        window.scrollTo(0, document.body.scrollHeight);
+    }
 }
 
 function onFilterEnter() {
