@@ -1,9 +1,13 @@
 'use strict';
 
+const protobufsUrl = 'https://raw.githubusercontent.com/meshtastic/protobufs/v2.3.4';
+
 const defaultMqttUrl = 'wss://mqtt.eclipseprojects.io/mqtt';
 const defaultMqttTopic = 'marsupial';
 const defaultKey = CryptoJS.enc.Base64.parse('1PG7OiApB1nwvP+rz05pAQ==');
-const protobufsUrl = 'https://raw.githubusercontent.com/meshtastic/protobufs/v2.3.4';
+const defaultMaxPackets = 2048;
+
+var packets = [];
 
 var mqttUrlInput   = null;
 var mqttTopicInput = null;
@@ -225,6 +229,11 @@ const dummyHeader = {
 };
 
 function render(se) {
+    if (tbody.rows.length > defaultMaxPackets * 2) {
+        tbody.deleteRow(0);
+        tbody.deleteRow(0);
+    }
+
     var headerRow = tbody.insertRow();
     if (se.packet.rxRssi == 0) {
         headerRow.className = 'packet-header-row-outbound';
@@ -242,7 +251,7 @@ function render(se) {
     }
 
     if (se.packet.decoded) {
-        decodedText += `x${arrayToString(se.packet.decoded.payload)} Decoded `
+        decodedText += `Decoded `
 
         const port = se.packet.decoded.portnum;
         var decode = null;
@@ -269,8 +278,6 @@ function render(se) {
     cell.appendChild(decoded);
     decoded.textContent = decodedText;
 }
-
-var db = [];
 
 function mqttOnMessage(topic, message) {
     const topicLevels = topic.split('/');
@@ -310,7 +317,11 @@ function mqttOnMessage(topic, message) {
     } else {
         se.header.portnum = '?';
     }
-    db.push(se);
+
+    if (packets.length > defaultMaxPackets) {
+        packets.shift();
+    }
+    packets.push(se);
 
     const scrollDown = window.scrollY + window.innerHeight + 42 > document.body.scrollHeight;
     if (filterExpr(se.header)) {
@@ -346,7 +357,7 @@ function onFilterEnter() {
     }
 
     tbody.innerHTML = '';
-    db.forEach((se) => {
+    packets.forEach((se) => {
         if (filterExpr(se.header)) {
             render(se);
         }
@@ -357,7 +368,7 @@ function onFilterEnter() {
 }
 
 function onClickClear() {
-    db = [];
+    packets = [];
     tbody.innerHTML = '';
 }
 
