@@ -21,8 +21,12 @@ function formatTime(v) {
     return t.toISOString();
 }
 
+function formatId(v) {
+    return v.toString(16).padStart(8, '0');
+}
+
 function formatNodeId(v) {
-    return '!' + v.toString(16).padStart(8, '0');
+    return '!' + formatId(v);
 }
 
 function formatFloat(v) {
@@ -163,7 +167,7 @@ function decodeEncrypted(packet, key) {
     try {
         packet.decoded = meshtastic.Data.decode(wordsToByteArray(decrypted));
     } catch (error) {
-        console.log('failed to decode encrypted packet: ' + error);
+        console.log(`failed to decode encrypted packet ${formatId(packet.id)}: ${error}`);
     }
 }
 
@@ -172,6 +176,7 @@ function mqttOnConnect() {
     connectButton.textContent = 'Disconnect';
     connectButton.disabled = false;
     statusRow.className = 'status-connected';
+    mqttClient.subscribe(`${mqttTopicInput.value}/2/c/+/+`);
     mqttClient.subscribe(`${mqttTopicInput.value}/2/e/+/+`);
 }
 
@@ -268,6 +273,12 @@ function render(se) {
 var db = [];
 
 function mqttOnMessage(topic, message) {
+    const topicLevels = topic.split('/');
+    if (topicLevels.length == 0 || !topicLevels[topicLevels.length - 1].startsWith('!')) {
+        console.log(`unexpected topic ${topic}`);
+        return;
+    }
+
     var se = null;
     try {
         se = meshtastic.ServiceEnvelope.decode(message);
@@ -278,14 +289,14 @@ function mqttOnMessage(topic, message) {
         return;
     }
 
-    if (se.packet.payloadVariant == 'encrypted' && se.channelId == 'LongFast') {
+    if (se.packet.payloadVariant == 'encrypted') {
         decodeEncrypted(se.packet, defaultKey);
     }
     se.header = {};
     se.header.rxTime    = formatTime(se.packet.rxTime);
     se.header.gatewayId = se.gatewayId;
     se.header.channelId = se.channelId;
-    se.header.id        = se.packet.id.toString(16).padStart(8, '0');
+    se.header.id        = formatId(se.packet.id);
     se.header.hopStart  = se.packet.hopStart;
     se.header.hopLimit  = se.packet.hopLimit;
     se.header.wantAck   = se.packet.wantAck ? '1' : '0';
