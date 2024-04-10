@@ -71,7 +71,8 @@ function decodeDefault(proto, name, payload) {
 };
 
 function decodeText(_proto, name, payload) {
-    return `${name}\n${payload.decode('utf-8')}`;
+    const text = new TextDecoder().decode(payload);
+    return `${name}\n${text}`;
 }
 
 function buildMeshtasticProtos() {
@@ -231,12 +232,14 @@ function render(se) {
     });
 
     var decodedText = '';
-    if (se.packet.encrypted) {
+    if (se.packet.payloadVariant == 'encrypted') {
         decodedText += `x${arrayToString(se.packet.encrypted)} Encrypted\n`;
+    } else {
+        decodedText += 'Unencrypted\n';
     }
 
     if (se.packet.decoded) {
-        decodedText += `x${arrayToString(se.packet.decoded.payload)} Decrypted `
+        decodedText += `x${arrayToString(se.packet.decoded.payload)} Decoded `
 
         const port = se.packet.decoded.portnum;
         var decode = null;
