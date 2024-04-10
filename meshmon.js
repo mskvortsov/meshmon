@@ -178,14 +178,14 @@ function mqttOnDisconnect() {
 function onClickConnect() {
     connectButton.disabled = true;
     if (mqttConnected) {
-        mqttClient.end(false, null, mqttOnDisconnect);
+        mqttClient.on('close', mqttOnDisconnect);
+        mqttClient.end();
     } else {
         mqttUrlInput.disabled = true;
         mqttTopicInput.disabled = true;
         mqttClient = mqtt.connect(mqttUrlInput.value);
         mqttClient.on('connect', mqttOnConnect);
         mqttClient.on('message', mqttOnMessage);
-        mqttClient.on('error', mqttOnDisconnect);
     }
 }
 
