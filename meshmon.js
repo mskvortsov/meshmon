@@ -211,6 +211,7 @@ const dummyHeader = {
 
 function render(se) {
     var row = tbody.insertRow();
+    row.className = 'packet-header-row';
     fields.forEach((field) => {
         row.insertCell().innerHTML = se.header[field];
     });
