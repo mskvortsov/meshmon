@@ -47,6 +47,9 @@ body {
 .packet-header-row {
     background: #333333;
 }
+.packet-header-row-outbound {
+    background: #006215;
+}
 .decoded td {
     text-align: left;
     font-size: 80%;

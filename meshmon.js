@@ -210,10 +210,15 @@ const dummyHeader = {
 };
 
 function render(se) {
-    var row = tbody.insertRow();
-    row.className = 'packet-header-row';
+    var headerRow = tbody.insertRow();
+    if (se.packet.rxRssi == 0) {
+        headerRow.className = 'packet-header-row-outbound';
+    } else {
+        headerRow.className = 'packet-header-row';
+    }
+
     fields.forEach((field) => {
-        row.insertCell().innerHTML = se.header[field];
+        headerRow.insertCell().innerHTML = se.header[field];
     });
 
     var decodedText = '';
