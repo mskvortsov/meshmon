@@ -34,6 +34,14 @@ function formatCoord(v) {
     return v / 10000000;
 }
 
+function formatRoute(v) {
+    const route = [];
+    v.forEach((r) => {
+        route.push(formatNodeId(r));
+    });
+    return route;
+}
+
 const formatters = new Map([
     ['nodeId',             formatNodeId],
     ['lastSentById',       formatNodeId],
@@ -46,6 +54,7 @@ const formatters = new Map([
     ['airUtilTx',          formatFloat],
     ['latitudeI',          formatCoord],
     ['longitudeI',         formatCoord],
+    ['route',              formatRoute],
 ]);
 
 function decodeDefault(proto, name, payload) {
