@@ -137,7 +137,7 @@ function wordsToByteArray(wordArray) {
 }
 
 function arrayToString(arr) {
-    return arr.map((v) => v.toString(16).padStart(2, '0')).join('');
+    return Array.from(arr).map((v) => v.toString(16).padStart(2, '0')).join('');
 }
 
 function decodeEncrypted(packet, key) {
