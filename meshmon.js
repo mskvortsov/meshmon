@@ -172,7 +172,7 @@ function mqttOnConnect() {
     connectButton.textContent = 'Disconnect';
     connectButton.disabled = false;
     statusRow.className = 'status-connected';
-    mqttClient.subscribe(`${mqttTopicInput.value}/2/e/#`);
+    mqttClient.subscribe(`${mqttTopicInput.value}/2/e/+/+`);
 }
 
 function mqttOnDisconnect() {
@@ -234,8 +234,6 @@ function render(se) {
     var decodedText = '';
     if (se.packet.payloadVariant == 'encrypted') {
         decodedText += `x${arrayToString(se.packet.encrypted)} Encrypted\n`;
-    } else {
-        decodedText += 'Unencrypted\n';
     }
 
     if (se.packet.decoded) {
