@@ -72,6 +72,7 @@ body {
 
 #fit-row {
     visibility: collapse;
+    font-family: monospace;
 }
 .right {
     text-align: right;
