@@ -25,12 +25,16 @@ function formatTime(v) {
     return t.toISOString();
 }
 
+function formatHex(v, width) {
+    return v.toString(16).padStart(width, '0');
+}
+
 function formatId(v) {
-    return v.toString(16).padStart(8, '0');
+    return formatHex(v, 8);
 }
 
 function formatNodeId(v) {
-    return '!' + formatId(v);
+    return '!' + formatHex(v, 8);
 }
 
 function formatFloat(v) {
@@ -50,6 +54,12 @@ function formatRoute(v) {
     return route;
 }
 
+function formatMacaddr(v) {
+    const words = CryptoJS.enc.Base64.parse(v);
+    const bytes = wordsToByteArray(words);
+    return Array.from(bytes).map((v) => formatHex(v, 2)).join(':');
+}
+
 const formatters = new Map([
     ['nodeId',             formatNodeId],
     ['lastSentById',       formatNodeId],
@@ -63,6 +73,7 @@ const formatters = new Map([
     ['latitudeI',          formatCoord],
     ['longitudeI',         formatCoord],
     ['route',              formatRoute],
+    ['macaddr',            formatMacaddr],
 ]);
 
 function decodeDefault(proto, name, payload) {
@@ -146,7 +157,7 @@ function wordsToByteArray(wordArray) {
 }
 
 function arrayToString(arr) {
-    return Array.from(arr).map((v) => v.toString(16).padStart(2, '0')).join('');
+    return Array.from(arr).map((v) => formatHex(v, 2)).join('');
 }
 
 function decodeEncrypted(packet, key) {
