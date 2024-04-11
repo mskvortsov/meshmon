@@ -11,8 +11,8 @@ var packets = [];
 
 var mqttUrlInput   = null;
 var mqttTopicInput = null;
-var mqttConnected  = false;
 var mqttClient     = null;
+var mqttStatusHint = null;
 
 var tbody = null;
 var statusRow = null;
@@ -187,16 +187,15 @@ function decodeEncrypted(packet, key) {
 }
 
 function mqttOnConnect() {
-    mqttConnected = true;
     connectButton.textContent = 'Disconnect';
     connectButton.disabled = false;
     statusRow.className = 'status-connected';
+    mqttStatusHint.innerHTML = '';
     mqttClient.subscribe(`${mqttTopicInput.value}/2/c/+/+`);
     mqttClient.subscribe(`${mqttTopicInput.value}/2/e/+/+`);
 }
 
-function mqttOnDisconnect() {
-    mqttConnected = false;
+function resetToConnect() {
     mqttClient = null;
     connectButton.textContent = 'Connect';
     connectButton.disabled = false;
@@ -205,17 +204,39 @@ function mqttOnDisconnect() {
     statusRow.className = 'status-disconnected';
 }
 
+function mqttOnDisconnect() {
+    resetToConnect();
+}
+
+function mqttOnError(error) {
+    mqttStatusHint.innerHTML = error.toString();
+    resetToConnect();
+}
+
 function onClickConnect() {
     connectButton.disabled = true;
-    if (mqttConnected) {
+    if (mqttClient && mqttClient.connected) {
         mqttClient.on('close', mqttOnDisconnect);
         mqttClient.end();
     } else {
         mqttUrlInput.disabled = true;
         mqttTopicInput.disabled = true;
-        mqttClient = mqtt.connect(mqttUrlInput.value);
+        try {
+            mqttClient = mqtt.connect(mqttUrlInput.value, {
+                reconnectPeriod: 0,
+                connectTimeout: 5000,
+                manualConnect: true,
+            });
+        } catch (error) {
+            mqttStatusHint.innerHTML = error.toString();
+            resetToConnect();
+            return;
+        }
         mqttClient.on('connect', mqttOnConnect);
         mqttClient.on('message', mqttOnMessage);
+        mqttClient.on('error', mqttOnError);
+        mqttClient.connect();
+        mqttClient.stream.on('error', mqttOnError);
     }
 }
 
@@ -405,6 +426,8 @@ window.onload = function() {
     mqttTopicInput = document.getElementById('mqtt-topic');
     mqttTopicInput.placeholder = defaultMqttTopic;
     mqttTopicInput.defaultValue = defaultMqttTopic;
+
+    mqttStatusHint = document.getElementById('mqtt-status');
 
     connectButton = document.getElementById('mqtt-connect');
     connectButton.addEventListener('click', onClickConnect);

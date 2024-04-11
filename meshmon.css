@@ -2,7 +2,7 @@ body {
     color-scheme: dark;
     background-color: #232327;
     color: #b1b1b3;
-    font-family: sans-serif;
+    font-family: Verdana, sans-serif;
 }
 
 .main-table td {
@@ -87,6 +87,9 @@ body {
 .bottom-table {
     padding: 0;
     width: 100%;
+}
+.bottom-table label, button, input, span {
+    font-family: Verdana, sans-serif;
 }
 .bottom-table td {
     padding: 0;
