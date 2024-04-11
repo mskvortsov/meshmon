@@ -5,7 +5,7 @@ body {
     font-family: sans-serif;
 }
 
-.main-table table, td {
+.main-table td {
     white-space: nowrap;
     padding-left: 8px;
     padding-right: 8px;
@@ -55,7 +55,7 @@ body {
     font-size: 80%;
 }
 #filter-expr-input {
-    width: 100%;
+    width: 99%;
 }
 .status-disconnected {
     background-color: #ea7a6c;
@@ -68,4 +68,30 @@ body {
 }
 .filter-error {
     background-color: #4b2f36;
+}
+
+#fit-row {
+    visibility: collapse;
+}
+.right {
+    text-align: right;
+    margin-right: 1em;
+}
+.left {
+    text-align: left;
+    margin-left: 1em;
+}
+#connect-cell {
+    padding: 0;
+}
+.bottom-table {
+    padding: 0;
+    width: 100%;
+}
+.bottom-table td {
+    padding: 0;
+    border: 0;
+}
+.bottom-table a {
+    color: white;
 }

@@ -3,7 +3,7 @@
 const protobufsUrl = 'https://raw.githubusercontent.com/meshtastic/protobufs/v2.3.4';
 
 const defaultMqttUrl = 'wss://mqtt.eclipseprojects.io/mqtt';
-const defaultMqttTopic = 'marsupial';
+const defaultMqttTopic = 'msh';
 const defaultKey = CryptoJS.enc.Base64.parse('1PG7OiApB1nwvP+rz05pAQ==');
 const defaultMaxPackets = 2048;
 
@@ -75,7 +75,7 @@ function decodeDefault(proto, name, payload) {
             return v;
         }
     };
-    return `${name}\n${JSON.stringify(info, replacer, 2)}`;
+    return `${name} ${JSON.stringify(info, replacer, 2)}`;
 };
 
 function decodeText(_proto, name, payload) {
@@ -251,8 +251,6 @@ function render(se) {
     }
 
     if (se.packet.decoded) {
-        decodedText += `Decoded `
-
         const port = se.packet.decoded.portnum;
         var decode = null;
         if (port in meshtastic.protos) {

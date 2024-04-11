@@ -2,9 +2,10 @@
 <html>
     <head>
         <meta charset="UTF-8"/>
-        <title>Meshtastic Monitor</title>
+        <title>Meshtastic MQTT Monitor</title>
         <link rel="icon" type="image/x-icon" href="https://meshtastic.org/design/web/favicon.ico">
         <link rel="stylesheet" href="meshmon.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.5.0/mqtt.min.js"></script>
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/protobufjs/7.2.6/protobuf.min.js"></script>
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
@@ -22,18 +23,29 @@
             </thead>
             <tbody id="tbody"></tbody>
             <tfoot>
-                <tr id="fit-row" style="visibility:collapse"></tr>
+                <tr id="fit-row"></tr>
                 <tr id="status-row" class="status-disconnected">
                     <td id="status-cell"></td>
                 </tr>
                 <tr>
                     <td id="connect-cell">
-                        <label for="mqtt-url">MQTT URL</label>
-                        <input id="mqtt-url" type="text"/>
-                        <label for="mqtt-topic">Topic</label>
-                        <input id="mqtt-topic" type="text"/>
-                        <button id="mqtt-connect">Connect</button>
-                        <button id="clear">Clear</button>
+                        <table class="bottom-table">
+                            <tr>
+                                <td class="left">
+                                    <label for="mqtt-url">MQTT URL</label>
+                                    <input id="mqtt-url" type="text" size="25"/>
+                                    <label for="mqtt-topic">Topic</label>
+                                    <input id="mqtt-topic" type="text" size="10"/>
+                                    <button id="mqtt-connect">Connect</button>
+                                    <button id="clear">Clear</button>
+                                </td>
+                                <td class="right">
+                                    <a href="https://github.com/mskvortsov/meshmon" target="_blank">
+                                        <span class="fa-brands fa-github-alt"></span>
+                                    </a>
+                                </td>
+                            </tr>
+                        </table>
                     </td>
                 </tr>
             </tfoot>
