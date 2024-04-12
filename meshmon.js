@@ -107,9 +107,14 @@ function buildMeshtasticProtos() {
         if (err)
             throw err;
 
-        meshtastic.ServiceEnvelope = root.lookupType('meshtastic.ServiceEnvelope');
-        meshtastic.Data            = root.lookupType('meshtastic.Data');
-        meshtastic.PortNum         = root.lookupEnum('meshtastic.PortNum');
+        try {
+            meshtastic.ServiceEnvelope = root.lookupType('meshtastic.ServiceEnvelope');
+            meshtastic.Data            = root.lookupType('meshtastic.Data');
+            meshtastic.PortNum         = root.lookupEnum('meshtastic.PortNum');
+        } catch (error) {
+            mqttStatusHint.innerHTML = error.toString();
+            throw error;
+        }
 
         const ports = meshtastic.PortNum.values;
         const protos = [
