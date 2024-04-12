@@ -20,6 +20,11 @@ var connectButton = null;
 var filterInput = null;
 var filterExpr = (_h) => { return true; };
 
+const cookies = Cookies.withAttributes({
+    sameSite: 'strict',
+    expires: 365,
+});
+
 function formatTime(v) {
     const t = new Date(v * 1000);
     return t.toISOString();
@@ -198,6 +203,8 @@ function mqttOnConnect() {
     mqttStatusHint.innerHTML = '';
     mqttClient.subscribe(`${mqttTopicInput.value}/2/c/+/+`);
     mqttClient.subscribe(`${mqttTopicInput.value}/2/e/+/+`);
+    cookies.set('url', mqttUrlInput.value);
+    cookies.set('topic', mqttTopicInput.value);
 }
 
 function resetToConnect() {
@@ -388,6 +395,7 @@ function onFilterEnter() {
         } catch {
             filterInput.classList.remove('filter-ok');
             filterInput.classList.add('filter-error');
+            return;
         }
     }
 
@@ -405,6 +413,15 @@ function onFilterEnter() {
 function onClickClear() {
     packets = [];
     tbody.innerHTML = '';
+}
+
+function getCookie(input, name, def) {
+    const v = cookies.get(name);
+    if (v === undefined) {
+        input.value = def;
+    } else {
+        input.value = v;
+    }
 }
 
 window.onload = function() {
@@ -448,6 +465,9 @@ window.onload = function() {
             onFilterEnter();
         }
     });
+
+    getCookie(mqttUrlInput, 'url', defaultMqttUrl);
+    getCookie(mqttTopicInput, 'topic', defaultMqttTopic);
 
     connectButton.click();
 };
