@@ -12,11 +12,25 @@
         <script type="text/javascript" src="meshmon.js"></script>
     </head>
     <body>
-        <table class="main-table">
+        <table class="table-main">
             <thead>
                 <tr id="filter-row">
                     <th id="filter-cell">
-                        <input id="filter-expr-input" type="text"/>
+                        <table class="table-foot">
+                            <tr>
+                                <td>
+                                    <input id="filter-expr-input" type="text"/>
+                                </td>
+                                <td>
+                                    <div class="theme-switch-wrapper">
+                                        <label class="theme-switch">
+                                            <input type="checkbox" id="theme-checkbox>"/>
+                                            <div class="theme-slider round"></div>
+                                        </label>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
                     </th>
                 </tr>
                 <tr id="thead-row"></tr>
@@ -29,7 +43,7 @@
                 </tr>
                 <tr>
                     <td id="connect-cell">
-                        <table class="bottom-table">
+                        <table class="table-foot">
                             <tr>
                                 <td class="left">
                                     <label for="mqtt-url">Broker URL</label>
