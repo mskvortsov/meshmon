@@ -18,11 +18,6 @@ var connectButton = null;
 var filterInput = null;
 var filterExpr = (_h) => { return true; };
 
-const cookies = Cookies.withAttributes({
-    sameSite: 'strict',
-    expires: 365,
-});
-
 function formatTime(v) {
     const t = new Date(v * 1000);
     return t.toISOString();
@@ -201,8 +196,8 @@ function mqttOnConnect() {
     mqttStatusHint.innerHTML = '';
     mqttClient.subscribe(`${mqttTopicInput.value}/2/c/+/+`);
     mqttClient.subscribe(`${mqttTopicInput.value}/2/e/+/+`);
-    cookies.set('url', mqttUrlInput.value);
-    cookies.set('topic', mqttTopicInput.value);
+    localStorage.setItem('url', mqttUrlInput.value);
+    localStorage.setItem('topic', mqttTopicInput.value);
 }
 
 function resetToConnect() {
@@ -413,15 +408,6 @@ function onClickClear() {
     tbody.innerHTML = '';
 }
 
-function getCookie(input, name, def) {
-    const v = cookies.get(name);
-    if (v === undefined) {
-        input.value = def;
-    } else {
-        input.value = v;
-    }
-}
-
 window.onload = function() {
     var theadRow = document.getElementById('thead-row');
     var fitRow = document.getElementById('fit-row');
@@ -464,8 +450,8 @@ window.onload = function() {
         }
     });
 
-    getCookie(mqttUrlInput, 'url', defaultMqttUrl);
-    getCookie(mqttTopicInput, 'topic', defaultMqttTopic);
+    mqttUrlInput.value = localStorage.getItem('url') ?? defaultMqttUrl;
+    mqttTopicInput.value = localStorage.getItem('topic') ?? defaultMqttTopic;
 
     connectButton.click();
 };
