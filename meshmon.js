@@ -472,6 +472,9 @@ window.onload = function() {
         if (currentTheme === 'dark') {
             toggleSwitch.checked = true;
         }
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        toggleSwitch.checked = true;
     }
 
     toggleSwitch.addEventListener('change', switchTheme, false);
