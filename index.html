@@ -3,9 +3,8 @@
     <head>
         <meta charset="UTF-8"/>
         <title>Meshtastic MQTT Monitor</title>
-        <link rel="icon" type="image/x-icon" href="https://meshtastic.org/design/web/favicon.ico">
+        <link rel="icon" type="image/svg+xml" href="assets/meshtastic.svg">
         <link rel="stylesheet" href="meshmon.css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.5.2/mqtt.min.js"></script>
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/protobufjs/7.2.6/protobuf.min.js"></script>
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
@@ -16,7 +15,7 @@
             <thead>
                 <tr id="filter-row">
                     <th id="filter-cell">
-                        <table class="table-foot">
+                        <table class="table-head">
                             <tr>
                                 <td>
                                     <input id="filter-expr-input" type="text"/>
@@ -33,11 +32,11 @@
                         </table>
                     </th>
                 </tr>
-                <tr id="thead-row"></tr>
+                <tr id="thead-row" class="verbatim"></tr>
             </thead>
             <tbody id="tbody"></tbody>
             <tfoot>
-                <tr id="fit-row"></tr>
+                <tr id="fit-row" class="packet-header-row"></tr>
                 <tr id="status-row" class="status-disconnected">
                     <td id="status-cell"></td>
                 </tr>
@@ -56,7 +55,8 @@
                                 </td>
                                 <td class="right">
                                     <a href="https://github.com/mskvortsov/meshmon" target="_blank">
-                                        <span class="fa-brands fa-github-alt"></span>
+                                        <img src="assets/github-mark.svg" class="logo logo-light"/>
+                                        <img src="assets/github-mark-white.svg" class="logo logo-dark"/>
                                     </a>
                                 </td>
                             </tr>

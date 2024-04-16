@@ -28,7 +28,7 @@ jobs:
       - name: Make dist directory
         run: |
           mkdir dist
-          rsync -R index.html meshmon.js meshmon.css protobufs/meshtastic/*.proto dist/
+          rsync --relative --recursive index.html meshmon.js meshmon.css assets/ protobufs/meshtastic/*.proto dist/
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact

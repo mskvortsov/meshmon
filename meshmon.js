@@ -273,9 +273,9 @@ function render(se) {
 
     var headerRow = tbody.insertRow();
     if (se.packet.rxRssi == 0) {
-        headerRow.className = 'packet-header-row-outbound';
+        headerRow.className = 'packet-header-row-outbound verbatim';
     } else {
-        headerRow.className = 'packet-header-row';
+        headerRow.className = 'packet-header-row verbatim';
     }
 
     fields.forEach((field) => {
@@ -306,12 +306,12 @@ function render(se) {
     }
 
     var row = tbody.insertRow();
-    row.className = 'decoded';
     var cell = row.insertCell();
+    cell.className = 'packet-decoded verbatim';
     cell.colSpan = fields.length;
     var decoded = document.createElement('pre');
-    cell.appendChild(decoded);
     decoded.textContent = decodedText;
+    cell.appendChild(decoded);
 }
 
 function mqttOnMessage(topic, message) {
