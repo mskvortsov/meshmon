@@ -458,10 +458,9 @@ function onFilterEnter() {
         filterInput.classList.remove('filter-ok');
         filterInput.classList.remove('filter-error');
     } else {
-        const newFilterExpr = eval?.(`(h) => {
-            with (h) {
-                return ${filterInput.value};
-            }
+        const newFilterExpr = new Function('h', `{
+            const { ${fields.join(', ')} } = h;
+            return ${filterInput.value};
         }`);
         try {
             newFilterExpr(dummyHeader);
