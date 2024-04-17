@@ -6,6 +6,7 @@ const defaultKey = CryptoJS.enc.Base64.parse('1PG7OiApB1nwvP+rz05pAQ==');
 const defaultMaxPackets = 2048;
 
 var packets = [];
+var users = new Map();
 
 var mqttUrlInput   = null;
 var mqttTopicInput = null;
@@ -299,6 +300,17 @@ const dummyHeader = {
     portnum: '75',
 };
 
+function tooltipOnMouseOver(e) {
+    const spanIdText = e.target;
+    const spanTooltipText = spanIdText.nextElementSibling;
+    const id = spanIdText.innerHTML;
+
+    const user = users.get(id);
+    if (user !== undefined) {
+        spanTooltipText.innerHTML = `${user.shortName} ${user.longName}`;
+    }
+}
+
 function render(se) {
     if (tbody.rows.length > defaultMaxPackets * 2) {
         tbody.deleteRow(0);
@@ -313,7 +325,28 @@ function render(se) {
     }
 
     fields.forEach((field) => {
-        headerRow.insertCell().innerHTML = se.header[field];
+        const cell = headerRow.insertCell();
+        var value = se.header[field];
+        if (value == '!ffffffff') {
+            cell.innerHTML = value;
+        } else if (field == 'gatewayId' || field == 'from' || field == 'to') {
+            const spanIdText = document.createElement('span');
+            spanIdText.innerHTML = value;
+            spanIdText.onmouseover = tooltipOnMouseOver;
+
+            const spanTooltipText = document.createElement('span');
+            spanTooltipText.className = 'node-tooltip-text';
+            spanTooltipText.innerHTML = '<i>Unknown</i>';
+
+            const spanTooltip = document.createElement('span');
+            spanTooltip.className = 'node-tooltip';
+
+            spanTooltip.appendChild(spanIdText);
+            spanTooltip.appendChild(spanTooltipText);
+            cell.appendChild(spanTooltip);
+        } else {
+            cell.innerHTML = value;
+        }
     });
 
     var text = '';
@@ -393,6 +426,12 @@ function mqttOnMessage(topic, message) {
         packets.shift();
     }
     packets.push(se);
+
+    if (se.packet.decoded.portnum == meshtastic.PortNum.values.NODEINFO_APP &&
+        se.parsed.status == ParseResult.Ok) {
+        const user = se.parsed.value.value;
+        users.set(user.id, user);
+    }
 
     const scrollDown = window.scrollY + window.innerHeight + 42 > document.body.scrollHeight;
     if (filterExpr(se.header)) {

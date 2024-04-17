@@ -16,6 +16,8 @@
     --selected-header: #c2c260;
     --selected-header-outbound: #5fcc44;
     --selected-decoded: #f9f978;
+
+    --tooltip-bg-color: #bababa;
 }
 
 [data-theme="dark"] {
@@ -33,6 +35,8 @@
     --selected-header: #5b6053;
     --selected-header-outbound: #1c8100;
     --selected-decoded: #56563c;
+
+    --tooltip-bg-color: #111111;
 }
 
 body {
@@ -145,6 +149,28 @@ body {
 }
 .logo-dark {
     display: var(--logo-dark-mode);
+}
+
+/* Node id tooltips */
+
+.node-tooltip-text {
+    font-family: var(--font-family-verbatim);
+}
+
+.node-tooltip .node-tooltip-text {
+    display: none;
+    background-color: var(--tooltip-bg-color);
+    color: var(--font-color);
+    text-align: left;
+    border-radius: 5px;
+    padding: 6px;
+
+    position: absolute;
+    z-index: 1;
+}
+
+.node-tooltip:hover .node-tooltip-text {
+    display: block;
 }
 
 /* Theme switcher */
