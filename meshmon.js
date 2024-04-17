@@ -331,13 +331,22 @@ function render(se) {
         console.error('parsing error');
     }
 
-    var row = tbody.insertRow();
-    var cell = row.insertCell();
-    cell.className = 'packet-decoded verbatim';
+    var decodedRow = tbody.insertRow();
+    decodedRow.className = 'packet-decoded verbatim';
+    var cell = decodedRow.insertCell();
     cell.colSpan = fields.length;
     var decoded = document.createElement('pre');
     decoded.textContent = text;
     cell.appendChild(decoded);
+
+    headerRow.onclick = () => {
+        headerRow.classList.toggle('selected');
+        headerRow.nextElementSibling.classList.toggle('selected');
+    };
+    decodedRow.onclick = () => {
+        decodedRow.previousElementSibling.classList.toggle('selected');
+        decodedRow.classList.toggle('selected');
+    };
 }
 
 function mqttOnMessage(topic, message) {
@@ -476,8 +485,12 @@ window.onload = function() {
     connectButton = document.getElementById('mqtt-connect');
     connectButton.addEventListener('click', onClickConnect);
 
-    var clearButton = document.getElementById('clear');
-    clearButton.addEventListener('click', onClickClear);
+    document.getElementById('clear').addEventListener('click', onClickClear);
+    document.getElementById('unselect').addEventListener('click', function() {
+        Array.from(tbody.rows).forEach((row) => {
+            row.classList.remove('selected');
+        });
+    });
 
     filterInput = document.getElementById('filter-expr-input');
     filterInput.placeholder = 'Filter: a JavaScript expression over header fields, ' +
