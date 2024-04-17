@@ -8,3 +8,10 @@ Nodes should publish their packets in protobuf form by disabling JSON output
 in MQTT settings.
 
 The app is deployed at <https://mskvortsov.github.io/meshmon>
+
+## Running locally
+
+```shell
+npm ci
+npm run dev
+```
