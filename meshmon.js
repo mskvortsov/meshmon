@@ -74,8 +74,8 @@ const formatters = new Map([
     ['macaddr',            formatMacaddr],
 ]);
 
-function decodeDefault(proto, name, payload) {
-    const info = proto.decode(payload);
+function parseDefault(proto, name, payload) {
+    const value = proto.decode(payload);
     const replacer = (k, v) => {
         const formatter = formatters.get(k);
         if (formatter) {
@@ -84,12 +84,46 @@ function decodeDefault(proto, name, payload) {
             return v;
         }
     };
-    return `${name} ${JSON.stringify(info, replacer, 2)}`;
+    return {
+        value: value,
+        text: `${name} ${JSON.stringify(value, replacer, 2)}`,
+    };
 };
 
-function decodeText(_proto, name, payload) {
-    const text = new TextDecoder().decode(payload);
-    return `${name}\n${text}`;
+function parseText(_proto, name, payload) {
+    const value = new TextDecoder().decode(payload);
+    return {
+        value: value,
+        text: `${name}\n${text}`,
+    };
+}
+
+const ParseResult = {
+    Ok:  0,
+    Err: 1,
+    NYI: 2,
+};
+
+function parseDecoded(decoded) {
+    const port = decoded.portnum;
+    if (!(port in meshtastic.protos)) {
+        return {
+            status: ParseResult.NYI,
+        };
+    }
+    const parse = meshtastic.protos[port].parse;
+    try {
+        const value = parse(decoded.payload);
+        return {
+            status: ParseResult.Ok,
+            value: value,
+        };
+    } catch (error) {
+        return {
+            status: ParseResult.Err,
+            error: error
+        };
+    }
 }
 
 function buildMeshtasticProtos() {
@@ -116,14 +150,14 @@ function buildMeshtasticProtos() {
 
         const ports = meshtastic.PortNum.values;
         const protos = [
-            { port: ports.TEXT_MESSAGE_APP,  name: 'Text',            decode: decodeText },
-            { port: ports.POSITION_APP,      name: 'Position',        decode: decodeDefault },
-            { port: ports.NODEINFO_APP,      name: 'User',            decode: decodeDefault },
-            { port: ports.ROUTING_APP,       name: 'Routing',         decode: decodeDefault },
-            { port: ports.STORE_FORWARD_APP, name: 'StoreAndForward', decode: decodeDefault },
-            { port: ports.TELEMETRY_APP,     name: 'Telemetry',       decode: decodeDefault },
-            { port: ports.TRACEROUTE_APP,    name: 'RouteDiscovery',  decode: decodeDefault },
-            { port: ports.NEIGHBORINFO_APP,  name: 'NeighborInfo',    decode: decodeDefault },
+            { port: ports.TEXT_MESSAGE_APP,  name: 'Text',            parse: parseText },
+            { port: ports.POSITION_APP,      name: 'Position',        parse: parseDefault },
+            { port: ports.NODEINFO_APP,      name: 'User',            parse: parseDefault },
+            { port: ports.ROUTING_APP,       name: 'Routing',         parse: parseDefault },
+            { port: ports.STORE_FORWARD_APP, name: 'StoreAndForward', parse: parseDefault },
+            { port: ports.TELEMETRY_APP,     name: 'Telemetry',       parse: parseDefault },
+            { port: ports.TRACEROUTE_APP,    name: 'RouteDiscovery',  parse: parseDefault },
+            { port: ports.NEIGHBORINFO_APP,  name: 'NeighborInfo',    parse: parseDefault },
         ];
 
         meshtastic.protos = {};
@@ -134,7 +168,7 @@ function buildMeshtasticProtos() {
             } catch (_error) {
             }
             meshtastic.protos[p.port] = {
-                decode: (v) => { return p.decode(proto, p.name, v); },
+                parse: (v) => { return p.parse(proto, p.name, v); },
             };
         });
     });
@@ -282,27 +316,19 @@ function render(se) {
         headerRow.insertCell().innerHTML = se.header[field];
     });
 
-    var decodedText = '';
+    var text = '';
     if (se.packet.payloadVariant == 'encrypted') {
-        decodedText += `x${arrayToString(se.packet.encrypted)} Encrypted\n`;
+        text += `x${arrayToString(se.packet.encrypted)} Encrypted\n`;
     }
 
-    if (se.packet.decoded) {
-        const port = se.packet.decoded.portnum;
-        var decode = null;
-        if (port in meshtastic.protos) {
-            decode = meshtastic.protos[port].decode;
-        }
-
-        if (decode) {
-            try {
-                decodedText += decode(se.packet.decoded.payload);
-            } catch (error) {
-                decodedText += `Error ${error}`;
-            }
-        } else {
-            decodedText += `NYI ${port}`;
-        }
+    if (se.parsed.status == ParseResult.Ok) {
+        text += se.parsed.value.text;
+    } else if (se.parsed.status == ParseResult.Err) {
+        text += `Error ${se.parsed.error}`;
+    } else if (se.parsed.status == ParseResult.NYI) {
+        text += `NYI ${se.packet.decoded.portnum}`;
+    } else {
+        console.error('parsing error');
     }
 
     var row = tbody.insertRow();
@@ -310,7 +336,7 @@ function render(se) {
     cell.className = 'packet-decoded verbatim';
     cell.colSpan = fields.length;
     var decoded = document.createElement('pre');
-    decoded.textContent = decodedText;
+    decoded.textContent = text;
     cell.appendChild(decoded);
 }
 
@@ -352,6 +378,7 @@ function mqttOnMessage(topic, message) {
     } else {
         se.header.portnum = '?';
     }
+    se.parsed = parseDecoded(se.packet.decoded);
 
     if (packets.length > defaultMaxPackets) {
         packets.shift();

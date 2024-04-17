@@ -41,9 +41,9 @@ body {
 .table-main {
     border-collapse: collapse;
     border: none;
+    white-space: nowrap;
 }
 .table-main td {
-    white-space: nowrap;
     padding-left: 8px;
     padding-right: 8px;
     border: var(--td-border);
