@@ -431,6 +431,8 @@ function mqttOnMessage(topic, message) {
         se.parsed.status == ParseResult.Ok) {
         const user = se.parsed.value.value;
         users.set(user.id, user);
+        document.getElementById('nodes-seen').innerHTML =
+            users.size.toString().padStart(3, '0');;
     }
 
     const scrollDown = window.scrollY + window.innerHeight + 42 > document.body.scrollHeight;
