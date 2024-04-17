@@ -373,10 +373,16 @@ function render(se) {
     cell.appendChild(decoded);
 
     headerRow.onclick = () => {
+        if (document.getSelection() != "") {
+            return;
+        }
         headerRow.classList.toggle('selected');
         headerRow.nextElementSibling.classList.toggle('selected');
     };
     decodedRow.onclick = () => {
+        if (document.getSelection() != "") {
+            return;
+        }
         decodedRow.previousElementSibling.classList.toggle('selected');
         decodedRow.classList.toggle('selected');
     };

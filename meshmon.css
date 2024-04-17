@@ -134,6 +134,7 @@ body {
 
 #nodes-seen {
     font-family: var(--font-family-verbatim);
+    font-weight: normal;
     background-color: var(--nodes-seen-bg-color);
     margin-left: 30px;
     width: 32px;
