@@ -8,11 +8,11 @@ import 'crypto-js/mode-ctr';
 import 'crypto-js/pad-nopadding';
 import 'crypto-js/lib-typedarrays';
 
-import mqtt from 'mqtt';
+import Paho from 'paho-mqtt';
 import protobuf from 'protobufjs/light';
 import meshtasticJson from '/generated/meshtastic.json';
 
-const defaultMqttUrl = 'wss://mqtt.eclipseprojects.io/mqtt';
+const defaultMqttUrl = 'mqtt.eclipseprojects.io';
 const defaultMqttTopic = 'msh';
 const defaultKey = Base64.parse('1PG7OiApB1nwvP+rz05pAQ==');
 const defaultMaxPackets = 2048;
@@ -241,35 +241,34 @@ function mqttOnDisconnect() {
     resetToConnect();
 }
 
-function mqttOnError(error) {
-    mqttStatusHint.innerHTML = error.toString();
+function mqttOnFailure(error) {
+    mqttStatusHint.innerHTML = error.errorMessage;
     resetToConnect();
 }
 
 function onClickConnect() {
     connectButton.disabled = true;
-    if (mqttClient && mqttClient.connected) {
-        mqttClient.on('close', mqttOnDisconnect);
-        mqttClient.end();
+    if (mqttClient && mqttClient.isConnected()) {
+        mqttClient.disconnect();
     } else {
         mqttUrlInput.disabled = true;
         mqttTopicInput.disabled = true;
         try {
-            mqttClient = mqtt.connect(mqttUrlInput.value, {
-                reconnectPeriod: 0,
-                connectTimeout: 5000,
-                manualConnect: true,
+            const clientId = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+            mqttClient = new Paho.Client(mqttUrlInput.value, 443, '/mqtt', 'meshmon-' + clientId);
+            mqttClient.onMessageArrived = mqttOnMessage;
+            mqttClient.onConnectionLost = mqttOnDisconnect;
+            mqttClient.connect({
+                useSSL: true,
+                onSuccess: mqttOnConnect,
+                onFailure: mqttOnFailure,
+                timeout: 5,
             });
         } catch (error) {
-            mqttStatusHint.innerHTML = error.toString();
+            mqttStatusHint.innerHTML = error.errorMessage;
             resetToConnect();
             return;
         }
-        mqttClient.on('connect', mqttOnConnect);
-        mqttClient.on('message', mqttOnMessage);
-        mqttClient.on('error', mqttOnError);
-        mqttClient.connect();
-        mqttClient.stream.on('error', mqttOnError);
     }
 }
 
@@ -381,8 +380,8 @@ function render(se) {
     };
 }
 
-function mqttOnMessage(topic, message) {
-    const topicLevels = topic.split('/');
+function mqttOnMessage(message) {
+    const topicLevels = message.topic.split('/');
     if (topicLevels.length == 0 || !topicLevels[topicLevels.length - 1].startsWith('!')) {
         console.log(`unexpected topic ${topic}`);
         return;
@@ -390,11 +389,11 @@ function mqttOnMessage(topic, message) {
 
     var se = null;
     try {
-        se = meshtastic.ServiceEnvelope.decode(message);
+        se = meshtastic.ServiceEnvelope.decode(message.payloadBytes);
     } catch (error) {
         console.error(`Failed to decode ServiceEnvelope: ${error}`);
-        console.error(`Topic: ${topic}`);
-        console.error(`Message: x${arrayToString(message)}`);
+        console.error(`Topic: ${message.topic}`);
+        console.error(`Message: x${arrayToString(message.payloadBytes)}`);
         return;
     }
 
