@@ -24,6 +24,8 @@ var mqttUrlInput   = null;
 var mqttTopicInput = null;
 var mqttClient     = null;
 var mqttStatusHint = null;
+const mqttClientId = 'meshmon-' +
+    formatHex(Math.floor(Math.random() * (2 ** 32 - 1)), 8);
 
 var tbody          = null;
 var statusRow      = null;
@@ -254,8 +256,7 @@ function onClickConnect() {
         mqttUrlInput.disabled = true;
         mqttTopicInput.disabled = true;
         try {
-            const clientId = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
-            mqttClient = new Paho.Client(mqttUrlInput.value, 443, '/mqtt', 'meshmon-' + clientId);
+            mqttClient = new Paho.Client(mqttUrlInput.value, 443, '/mqtt', mqttClientId);
             mqttClient.onMessageArrived = mqttOnMessage;
             mqttClient.onConnectionLost = mqttOnDisconnect;
             mqttClient.connect({
