@@ -1,5 +1,9 @@
 'use strict';
 
+import CryptoJS from 'crypto-js';
+import mqtt from 'mqtt';
+import protobuf from 'protobufjs';
+
 const defaultMqttUrl = 'wss://mqtt.eclipseprojects.io/mqtt';
 const defaultMqttTopic = 'msh';
 const defaultKey = CryptoJS.enc.Base64.parse('1PG7OiApB1nwvP+rz05pAQ==');

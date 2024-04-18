@@ -8,6 +8,11 @@
     "build": "vite build",
     "preview": "vite preview"
   },
+  "dependencies": {
+    "crypto-js": "^4.2.0",
+    "mqtt": "^5.5.2",
+    "protobufjs": "^7.2.6"
+  },
   "devDependencies": {
     "vite": "^5.2.0",
     "vite-plugin-static-copy": "^1.0.2"
