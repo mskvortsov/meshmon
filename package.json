@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run generate && vite build",
+    "generate": "mkdir -p generated && pbjs -t json -p protobufs protobufs/meshtastic/*.proto -o generated/meshtastic.json",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -14,7 +15,7 @@
     "protobufjs": "^7.2.6"
   },
   "devDependencies": {
-    "vite": "^5.2.0",
-    "vite-plugin-static-copy": "^1.0.2"
+    "protobufjs-cli": "^1.1.2",
+    "vite": "^5.2.0"
   }
 }

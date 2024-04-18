@@ -13,5 +13,6 @@ The app is deployed at <https://mskvortsov.github.io/meshmon>
 
 ```shell
 npm ci
+npm run generate
 npm run dev
 ```

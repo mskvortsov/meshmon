@@ -1,27 +1,35 @@
 'use strict';
 
-import CryptoJS from 'crypto-js';
+// Reduce bundle size by importing only required submodules
+import CryptoJS from 'crypto-js/core';
+import Base64 from 'crypto-js/enc-base64';
+import AES from 'crypto-js/aes';
+import 'crypto-js/mode-ctr';
+import 'crypto-js/pad-nopadding';
+import 'crypto-js/lib-typedarrays';
+
 import mqtt from 'mqtt';
-import protobuf from 'protobufjs';
+import protobuf from 'protobufjs/light';
+import meshtasticJson from '/generated/meshtastic.json';
 
 const defaultMqttUrl = 'wss://mqtt.eclipseprojects.io/mqtt';
 const defaultMqttTopic = 'msh';
-const defaultKey = CryptoJS.enc.Base64.parse('1PG7OiApB1nwvP+rz05pAQ==');
+const defaultKey = Base64.parse('1PG7OiApB1nwvP+rz05pAQ==');
 const defaultMaxPackets = 2048;
 
-var packets = [];
-var users = new Map();
+var packets        = [];
+var users          = new Map();
 
 var mqttUrlInput   = null;
 var mqttTopicInput = null;
 var mqttClient     = null;
 var mqttStatusHint = null;
 
-var tbody = null;
-var statusRow = null;
-var connectButton = null;
-var filterInput = null;
-var filterExpr = (_h) => { return true; };
+var tbody          = null;
+var statusRow      = null;
+var connectButton  = null;
+var filterInput    = null;
+var filterExpr     = (_h) => { return true; };
 
 function formatTime(v) {
     const t = new Date(v * 1000);
@@ -58,7 +66,7 @@ function formatRoute(v) {
 }
 
 function formatMacaddr(v) {
-    const words = CryptoJS.enc.Base64.parse(v);
+    const words = Base64.parse(v);
     const bytes = wordsToByteArray(words);
     return Array.from(bytes).map((v) => formatHex(v, 2)).join(':');
 }
@@ -111,12 +119,12 @@ const ParseResult = {
 
 function parseDecoded(decoded) {
     const port = decoded.portnum;
-    if (!(port in meshtastic.protos)) {
+    if (!(port in meshtastic.parsers)) {
         return {
             status: ParseResult.NYI,
         };
     }
-    const parse = meshtastic.protos[port].parse;
+    const parse = meshtastic.parsers[port];
     try {
         const value = parse(decoded.payload);
         return {
@@ -131,57 +139,38 @@ function parseDecoded(decoded) {
     }
 }
 
-function buildMeshtasticProtos() {
-    var protobuf_root = new protobuf.Root();
-    protobuf_root.resolvePath = function(_origin, target) {
-        return `protobufs/${target}`;
-    };
+function buildMeshtasticParsers() {
+    const root = protobuf.Root.fromJSON(meshtasticJson);
 
-    const modules = ['meshtastic/mqtt.proto', 'meshtastic/storeforward.proto'];
     var meshtastic = {};
+    meshtastic.ServiceEnvelope = root.lookup('meshtastic.ServiceEnvelope');
+    meshtastic.Data            = root.lookup('meshtastic.Data');
+    meshtastic.PortNum         = root.lookup('meshtastic.PortNum');
 
-    protobuf_root.load(modules, function(err, root) {
-        if (err)
-            throw err;
+    const ports = meshtastic.PortNum.values;
+    const parsers = [
+        { port: ports.TEXT_MESSAGE_APP,  name: 'Text',            parse: parseText },
+        { port: ports.POSITION_APP,      name: 'Position',        parse: parseDefault },
+        { port: ports.NODEINFO_APP,      name: 'User',            parse: parseDefault },
+        { port: ports.ROUTING_APP,       name: 'Routing',         parse: parseDefault },
+        { port: ports.STORE_FORWARD_APP, name: 'StoreAndForward', parse: parseDefault },
+        { port: ports.TELEMETRY_APP,     name: 'Telemetry',       parse: parseDefault },
+        { port: ports.TRACEROUTE_APP,    name: 'RouteDiscovery',  parse: parseDefault },
+        { port: ports.NEIGHBORINFO_APP,  name: 'NeighborInfo',    parse: parseDefault },
+    ];
 
-        try {
-            meshtastic.ServiceEnvelope = root.lookupType('meshtastic.ServiceEnvelope');
-            meshtastic.Data            = root.lookupType('meshtastic.Data');
-            meshtastic.PortNum         = root.lookupEnum('meshtastic.PortNum');
-        } catch (error) {
-            mqttStatusHint.innerHTML = error.toString();
-            throw error;
-        }
-
-        const ports = meshtastic.PortNum.values;
-        const protos = [
-            { port: ports.TEXT_MESSAGE_APP,  name: 'Text',            parse: parseText },
-            { port: ports.POSITION_APP,      name: 'Position',        parse: parseDefault },
-            { port: ports.NODEINFO_APP,      name: 'User',            parse: parseDefault },
-            { port: ports.ROUTING_APP,       name: 'Routing',         parse: parseDefault },
-            { port: ports.STORE_FORWARD_APP, name: 'StoreAndForward', parse: parseDefault },
-            { port: ports.TELEMETRY_APP,     name: 'Telemetry',       parse: parseDefault },
-            { port: ports.TRACEROUTE_APP,    name: 'RouteDiscovery',  parse: parseDefault },
-            { port: ports.NEIGHBORINFO_APP,  name: 'NeighborInfo',    parse: parseDefault },
-        ];
-
-        meshtastic.protos = {};
-        protos.forEach((p) => {
-            var proto = null;
-            try {
-                proto = root.lookupType('meshtastic.' + p.name);
-            } catch (_error) {
-            }
-            meshtastic.protos[p.port] = {
-                parse: (v) => { return p.parse(proto, p.name, v); },
-            };
-        });
+    meshtastic.parsers = {};
+    parsers.forEach((p) => {
+        var proto = root.lookup('meshtastic.' + p.name);
+        meshtastic.parsers[p.port] = (v) => {
+            return p.parse(proto, p.name, v);
+        };
     });
 
     return meshtastic;
 }
 
-const meshtastic = buildMeshtasticProtos();
+const meshtastic = buildMeshtasticParsers();
 
 function swap32(val) {
     return ((val & 0xff000000) >>> 24)
@@ -209,7 +198,7 @@ function decodeEncrypted(packet, key) {
     ]);
 
     const encrypted = CryptoJS.lib.WordArray.create(packet.encrypted);
-    const decrypted = CryptoJS.AES.decrypt(
+    const decrypted = AES.decrypt(
         CryptoJS.lib.CipherParams.create({
             ciphertext: encrypted,
         }),
@@ -354,14 +343,14 @@ function render(se) {
     });
 
     var text = '';
-    if (se.packet.payloadVariant == 'encrypted') {
+    if (se.packet.encrypted) {
         text += `x${arrayToString(se.packet.encrypted)} Encrypted\n`;
     }
 
     if (se.parsed.status == ParseResult.Ok) {
         text += se.parsed.value.text;
     } else if (se.parsed.status == ParseResult.Err) {
-        text += `Error ${se.parsed.error}`;
+        text += `Error ${se.parsed.error.message}`;
     } else if (se.parsed.status == ParseResult.NYI) {
         text += `NYI ${se.packet.decoded.portnum}`;
     } else {
@@ -425,19 +414,25 @@ function mqttOnMessage(topic, message) {
     se.header.rxSnr     = se.packet.rxSnr;
     se.header.from      = formatNodeId(se.packet.from);
     se.header.to        = formatNodeId(se.packet.to);
+
     if (se.packet.decoded) {
         se.header.portnum = se.packet.decoded.portnum;;
+        se.parsed = parseDecoded(se.packet.decoded);
     } else {
         se.header.portnum = '?';
+        se.parsed = {
+            status: ParseResult.Err,
+            error: new Error('Decoding failure')
+        };
     }
-    se.parsed = parseDecoded(se.packet.decoded);
 
     if (packets.length > defaultMaxPackets) {
         packets.shift();
     }
     packets.push(se);
 
-    if (se.packet.decoded.portnum == meshtastic.PortNum.values.NODEINFO_APP &&
+    if (se.packet.decoded &&
+        se.packet.decoded.portnum == meshtastic.PortNum.values.NODEINFO_APP &&
         se.parsed.status == ParseResult.Ok) {
         const user = se.parsed.value.value;
         users.set(user.id, user);

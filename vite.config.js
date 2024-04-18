@@ -1,5 +1,4 @@
-import { fileURLToPath } from 'url'
-import { viteStaticCopy } from 'vite-plugin-static-copy'
+import { fileURLToPath } from 'url';
 
 export default {
   base: '/meshmon/',
@@ -11,14 +10,4 @@ export default {
       }
     ]
   },
-  plugins: [
-    viteStaticCopy({
-      targets: [
-        {
-          src: 'protobufs/meshtastic/*.proto',
-          dest: 'protobufs/meshtastic/'
-        }
-      ]
-    })
-  ]
 }
