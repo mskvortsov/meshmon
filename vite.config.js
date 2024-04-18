@@ -1,13 +1,22 @@
-import { fileURLToPath } from 'url';
+import { defineConfig } from 'vite';
+import { resolve } from 'path';
 
-export default {
-  base: '/meshmon/',
-  resolve: {
-    alias: [
-      {
-        find: '@protobufjs/inquire',
-        replacement: fileURLToPath(new URL('src/inquire.js', import.meta.url))
-      }
-    ]
-  },
+function makeAlias(command) {
+  if (command === 'build') {
+    return [{
+      find: '@protobufjs/inquire',
+      replacement: resolve(__dirname, 'src/inquire.js')
+    }];
+  } else {
+    return [];
+  }
 }
+
+export default defineConfig(({ command, mode, isSsrBuild, isPreview }) => {
+  return {
+    base: '/meshmon/',
+    resolve: {
+      alias: makeAlias(command)
+    },
+  };
+});
