@@ -73,33 +73,50 @@ function formatMacaddr(v) {
     return Array.from(bytes).map((v) => formatHex(v, 2)).join(':');
 }
 
+function formatPayload(v) {
+    const words = Base64.parse(v);
+    const bytes = wordsToByteArray(words);
+    return `x${arrayToString(bytes)}`;
+}
+
 const formatters = new Map([
-    ['nodeId',             formatNodeId],
-    ['lastSentById',       formatNodeId],
-    ['time',               formatTime],
-    ['temperature',        formatFloat],
-    ['voltage',            formatFloat],
-    ['barometricPressure', formatFloat],
-    ['relativeHumidity',   formatFloat],
-    ['channelUtilization', formatFloat],
-    ['airUtilTx',          formatFloat],
+    // Data
+    ['payload',            formatPayload],
+    ['dest',               formatNodeId],
+    ['source',             formatNodeId],
+    ['replyId',            formatId],
+    ['requestId',          formatId],
+
+    // Position
     ['latitudeI',          formatCoord],
     ['longitudeI',         formatCoord],
+
+    // NeighborInfo
+    ['nodeId',             formatNodeId],
+    ['lastSentById',       formatNodeId],
+
+    // RouteDiscovery
     ['route',              formatRoute],
+
+    // Telemetry
+    ['time',               formatTime],
+
+    // DeviceMetrics
+    ['voltage',            formatFloat],
+    ['channelUtilization', formatFloat],
+    ['airUtilTx',          formatFloat],
+
+    // EnvironmentMetrics
+    ['temperature',        formatFloat],
+    ['relativeHumidity',   formatFloat],
+    ['barometricPressure', formatFloat],
+    ['gasResistance',      formatFloat],
+    ['voltage',            formatFloat],
+    ['current',            formatFloat],
+
+    // User
     ['macaddr',            formatMacaddr],
 ]);
-
-function parseType(typ, bytes) {
-    const value = typ.fromBinary(bytes);
-    const replacer = (k, v) => {
-        const formatter = formatters.get(k);
-        return formatter ? formatter(v) : v;
-    };
-    return {
-        value: value,
-        text: `${typ.name} ${JSON.stringify(value.toJson(), replacer, 2)}`,
-    };
-};
 
 const ParseResult = {
     Ok:  0,
@@ -115,10 +132,19 @@ function parseDecoded(data) {
         };
     }
     try {
-        const value = parseType(typ, data.payload);
+        const replacer = (k, v) => {
+            const formatter = formatters.get(k);
+            return formatter ? formatter(v) : v;
+        };
+        const dataText = JSON.stringify(data.toJson(), replacer, 2);
+        const message = typ.fromBinary(data.payload);
+        const messageText = JSON.stringify(message.toJson(), replacer, 2);
         return {
             status: ParseResult.Ok,
-            value: value,
+            value: {
+                message: message,
+                text: `Data ${dataText}\n${typ.name} ${messageText}`,
+            },
         };
     } catch (error) {
         return {
@@ -408,7 +434,7 @@ function mqttOnMessage(message) {
 
     if (data && data.portnum == Protobufs.Portnums.PortNum.NODEINFO_APP &&
         parsed.status == ParseResult.Ok) {
-        const user = parsed.value.value;
+        const user = parsed.value.message;
         users.set(user.id, user);
         document.getElementById('nodes-seen').innerHTML =
             users.size.toString().padStart(3, '0');;
