@@ -5,18 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run generate && vite build",
-    "generate": "mkdir -p generated && pbjs -t json -p protobufs protobufs/meshtastic/*.proto -o generated/meshtastic.json",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "^1.8.0",
     "crypto-js": "^4.2.0",
-    "mqtt": "^5.5.2",
-    "paho-mqtt": "^1.1.0",
-    "protobufjs": "^7.2.6"
+    "paho-mqtt": "^1.1.0"
   },
   "devDependencies": {
-    "protobufjs-cli": "^1.1.2",
+    "@buf/meshtastic_protobufs.bufbuild_es": "1.8.0-20240325205556-b11811405eea.2",
     "vite": "^5.2.9"
   }
 }

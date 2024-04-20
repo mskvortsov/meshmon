@@ -1,5 +1,7 @@
 'use strict';
 
+import * as Protobufs from "./protobufs.js";
+
 // Reduce bundle size by importing only required submodules
 import CryptoJS from 'crypto-js/core';
 import Base64 from 'crypto-js/enc-base64';
@@ -9,8 +11,6 @@ import 'crypto-js/pad-nopadding';
 import 'crypto-js/lib-typedarrays';
 
 import Paho from 'paho-mqtt';
-import protobuf from 'protobufjs/light';
-import meshtasticJson from '/generated/meshtastic.json';
 
 const defaultMqttUrl = 'mqtt.eclipseprojects.io';
 const defaultMqttTopic = 'msh';
@@ -89,29 +89,17 @@ const formatters = new Map([
     ['macaddr',            formatMacaddr],
 ]);
 
-function parseDefault(proto, name, payload) {
-    const value = proto.decode(payload);
+function parseType(typ, bytes) {
+    const value = typ.fromBinary(bytes);
     const replacer = (k, v) => {
         const formatter = formatters.get(k);
-        if (formatter) {
-            return formatter(v);
-        } else {
-            return v;
-        }
+        return formatter ? formatter(v) : v;
     };
     return {
         value: value,
-        text: `${name} ${JSON.stringify(value, replacer, 2)}`,
+        text: `${typ.name} ${JSON.stringify(value.toJson(), replacer, 2)}`,
     };
 };
-
-function parseText(_proto, name, payload) {
-    const value = new TextDecoder().decode(payload);
-    return {
-        value: value,
-        text: `${name}\n${text}`,
-    };
-}
 
 const ParseResult = {
     Ok:  0,
@@ -119,16 +107,15 @@ const ParseResult = {
     NYI: 2,
 };
 
-function parseDecoded(decoded) {
-    const port = decoded.portnum;
-    if (!(port in meshtastic.parsers)) {
+function parseDecoded(data) {
+    const typ = parsers.get(data.portnum);
+    if (typ === undefined) {
         return {
             status: ParseResult.NYI,
         };
     }
-    const parse = meshtastic.parsers[port];
     try {
-        const value = parse(decoded.payload);
+        const value = parseType(typ, data.payload);
         return {
             status: ParseResult.Ok,
             value: value,
@@ -141,38 +128,23 @@ function parseDecoded(decoded) {
     }
 }
 
-function buildMeshtasticParsers() {
-    const root = protobuf.Root.fromJSON(meshtasticJson);
+const Text = {
+    name: 'Text',
+    fromBinary: (bytes, _options) => {
+        return { message: new TextDecoder().decode(bytes) };
+    }
+};
 
-    var meshtastic = {};
-    meshtastic.ServiceEnvelope = root.lookup('meshtastic.ServiceEnvelope');
-    meshtastic.Data            = root.lookup('meshtastic.Data');
-    meshtastic.PortNum         = root.lookup('meshtastic.PortNum');
-
-    const ports = meshtastic.PortNum.values;
-    const parsers = [
-        { port: ports.TEXT_MESSAGE_APP,  name: 'Text',            parse: parseText },
-        { port: ports.POSITION_APP,      name: 'Position',        parse: parseDefault },
-        { port: ports.NODEINFO_APP,      name: 'User',            parse: parseDefault },
-        { port: ports.ROUTING_APP,       name: 'Routing',         parse: parseDefault },
-        { port: ports.STORE_FORWARD_APP, name: 'StoreAndForward', parse: parseDefault },
-        { port: ports.TELEMETRY_APP,     name: 'Telemetry',       parse: parseDefault },
-        { port: ports.TRACEROUTE_APP,    name: 'RouteDiscovery',  parse: parseDefault },
-        { port: ports.NEIGHBORINFO_APP,  name: 'NeighborInfo',    parse: parseDefault },
-    ];
-
-    meshtastic.parsers = {};
-    parsers.forEach((p) => {
-        var proto = root.lookup('meshtastic.' + p.name);
-        meshtastic.parsers[p.port] = (v) => {
-            return p.parse(proto, p.name, v);
-        };
-    });
-
-    return meshtastic;
-}
-
-const meshtastic = buildMeshtasticParsers();
+const parsers = new Map([
+    [Protobufs.Portnums.PortNum.TEXT_MESSAGE_APP,  Text                                  ],
+    [Protobufs.Portnums.PortNum.POSITION_APP,      Protobufs.Mesh.Position               ],
+    [Protobufs.Portnums.PortNum.NODEINFO_APP,      Protobufs.Mesh.User                   ],
+    [Protobufs.Portnums.PortNum.ROUTING_APP,       Protobufs.Mesh.Routing                ],
+    [Protobufs.Portnums.PortNum.STORE_FORWARD_APP, Protobufs.StoreForward.StoreAndForward],
+    [Protobufs.Portnums.PortNum.TELEMETRY_APP,     Protobufs.Telemetry.Telemetry         ],
+    [Protobufs.Portnums.PortNum.TRACEROUTE_APP,    Protobufs.Mesh.RouteDiscovery         ],
+    [Protobufs.Portnums.PortNum.NEIGHBORINFO_APP,  Protobufs.Mesh.NeighborInfo           ],
+]);
 
 function swap32(val) {
     return ((val & 0xff000000) >>> 24)
@@ -193,13 +165,13 @@ function arrayToString(arr) {
     return Array.from(arr).map((v) => formatHex(v, 2)).join('');
 }
 
-function decodeEncrypted(packet, key) {
+function decrypt(packet, key) {
     const iv = CryptoJS.lib.WordArray.create([
         swap32(packet.id), 0,
         swap32(packet.from), 0,
     ]);
 
-    const encrypted = CryptoJS.lib.WordArray.create(packet.encrypted);
+    const encrypted = CryptoJS.lib.WordArray.create(packet.payloadVariant.value);
     const decrypted = AES.decrypt(
         CryptoJS.lib.CipherParams.create({
             ciphertext: encrypted,
@@ -213,9 +185,9 @@ function decodeEncrypted(packet, key) {
     );
 
     try {
-        packet.decoded = meshtastic.Data.decode(wordsToByteArray(decrypted));
+        return Protobufs.Mesh.Data.fromBinary(wordsToByteArray(decrypted));
     } catch (error) {
-        console.log(`failed to decode encrypted packet ${formatId(packet.id)}: ${error}`);
+        return undefined;
     }
 }
 
@@ -304,7 +276,7 @@ function tooltipOnMouseOver(e) {
     }
 }
 
-function render(se) {
+function render(se, header, data, parsed) {
     if (tbody.rows.length > defaultMaxPackets * 2) {
         tbody.deleteRow(0);
         tbody.deleteRow(0);
@@ -319,7 +291,7 @@ function render(se) {
 
     fields.forEach((field) => {
         const cell = headerRow.insertCell();
-        var value = se.header[field];
+        var value = header[field];
         if (value == '!ffffffff') {
             cell.innerHTML = value;
         } else if (field == 'gatewayId' || field == 'from' || field == 'to') {
@@ -343,16 +315,16 @@ function render(se) {
     });
 
     var text = '';
-    if (se.packet.encrypted) {
-        text += `x${arrayToString(se.packet.encrypted)} Encrypted\n`;
+    if (se.packet.payloadVariant.case == 'encrypted') {
+        text += `Encrypted x${arrayToString(se.packet.payloadVariant.value)}\n`;
     }
 
-    if (se.parsed.status == ParseResult.Ok) {
-        text += se.parsed.value.text;
-    } else if (se.parsed.status == ParseResult.Err) {
-        text += `Error ${se.parsed.error.message}`;
-    } else if (se.parsed.status == ParseResult.NYI) {
-        text += `NYI ${se.packet.decoded.portnum}`;
+    if (parsed.status == ParseResult.Ok) {
+        text += parsed.value.text;
+    } else if (parsed.status == ParseResult.Err) {
+        text += `Error ${parsed.error.message}`;
+    } else if (parsed.status == ParseResult.NYI) {
+        text += `NYI ${data.portnum}`;
     } else {
         console.error('parsing error');
     }
@@ -390,7 +362,7 @@ function mqttOnMessage(message) {
 
     var se = null;
     try {
-        se = meshtastic.ServiceEnvelope.decode(message.payloadBytes);
+        se = Protobufs.Mqtt.ServiceEnvelope.fromBinary(message.payloadBytes);
     } catch (error) {
         console.error(`Failed to decode ServiceEnvelope: ${error}`);
         console.error(`Topic: ${message.topic}`);
@@ -398,29 +370,32 @@ function mqttOnMessage(message) {
         return;
     }
 
-    if (se.packet.payloadVariant == 'encrypted') {
-        decodeEncrypted(se.packet, defaultKey);
-    }
-    se.header = {};
-    se.header.rxTime    = formatTime(se.packet.rxTime);
-    se.header.gatewayId = se.gatewayId;
-    se.header.channelId = se.channelId;
-    se.header.id        = formatId(se.packet.id);
-    se.header.hopStart  = se.packet.hopStart;
-    se.header.hopLimit  = se.packet.hopLimit;
-    se.header.wantAck   = se.packet.wantAck ? '1' : '0';
-    se.header.viaMqtt   = se.packet.viaMqtt ? '1' : '0';
-    se.header.rxRssi    = se.packet.rxRssi;
-    se.header.rxSnr     = se.packet.rxSnr;
-    se.header.from      = formatNodeId(se.packet.from);
-    se.header.to        = formatNodeId(se.packet.to);
+    const data = se.packet.payloadVariant.case == 'encrypted' ?
+        decrypt(se.packet, defaultKey) :
+        se.packet.payloadVariant.value;
 
-    if (se.packet.decoded) {
-        se.header.portnum = se.packet.decoded.portnum;;
-        se.parsed = parseDecoded(se.packet.decoded);
+    const header = {
+        rxTime:    formatTime(se.packet.rxTime),
+        gatewayId: se.gatewayId,
+        channelId: se.channelId,
+        id:        formatId(se.packet.id),
+        hopStart:  se.packet.hopStart,
+        hopLimit:  se.packet.hopLimit,
+        wantAck:   se.packet.wantAck ? '1' : '0',
+        viaMqtt:   se.packet.viaMqtt ? '1' : '0',
+        rxRssi:    se.packet.rxRssi,
+        rxSnr:     se.packet.rxSnr,
+        from:      formatNodeId(se.packet.from),
+        to:        formatNodeId(se.packet.to),
+    };
+
+    var parsed = null;
+    if (data !== undefined) {
+        header.portnum = data.portnum;
+        parsed = parseDecoded(data);
     } else {
-        se.header.portnum = '?';
-        se.parsed = {
+        header.portnum = '?';
+        parsed = {
             status: ParseResult.Err,
             error: new Error('Decoding failure')
         };
@@ -429,20 +404,19 @@ function mqttOnMessage(message) {
     if (packets.length > defaultMaxPackets) {
         packets.shift();
     }
-    packets.push(se);
+    packets.push({ se, header, data, parsed });
 
-    if (se.packet.decoded &&
-        se.packet.decoded.portnum == meshtastic.PortNum.values.NODEINFO_APP &&
-        se.parsed.status == ParseResult.Ok) {
-        const user = se.parsed.value.value;
+    if (data && data.portnum == Protobufs.Portnums.PortNum.NODEINFO_APP &&
+        parsed.status == ParseResult.Ok) {
+        const user = parsed.value.value;
         users.set(user.id, user);
         document.getElementById('nodes-seen').innerHTML =
             users.size.toString().padStart(3, '0');;
     }
 
     const scrollDown = window.scrollY + window.innerHeight + 42 > document.body.scrollHeight;
-    if (filterExpr(se.header)) {
-        render(se);
+    if (filterExpr(header)) {
+        render(se, header, data, parsed);
     }
 
     if (scrollDown) {
@@ -475,9 +449,9 @@ function onFilterEnter() {
     }
 
     tbody.innerHTML = '';
-    packets.forEach((se) => {
-        if (filterExpr(se.header)) {
-            render(se);
+    packets.forEach(({ se, header, data, parsed }) => {
+        if (filterExpr(header)) {
+            render(se, header, data, parsed);
         }
     });
 
