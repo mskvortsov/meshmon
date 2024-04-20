@@ -1,8 +1,8 @@
 'use strict';
 
-import * as Protobufs from "./protobufs.js";
+import * as Protobufs from './protobufs.js';
+import { stringify as yamlStringify } from 'yaml'
 
-// Reduce bundle size by importing only required submodules
 import CryptoJS from 'crypto-js/core';
 import Base64 from 'crypto-js/enc-base64';
 import AES from 'crypto-js/aes';
@@ -136,14 +136,18 @@ function parseDecoded(data) {
             const formatter = formatters.get(k);
             return formatter ? formatter(v) : v;
         };
-        const dataText = JSON.stringify(data.toJson(), replacer, 2);
+        const dataText = yamlStringify(data.toJson(), replacer)
+            .replace(/\n+$/gm, '')
+            .replace(/^/gm, '  ');
         const message = typ.fromBinary(data.payload);
-        const messageText = JSON.stringify(message.toJson(), replacer, 2);
+        const messageText = yamlStringify(message.toJson(), replacer)
+            .replace(/\n+$/gm, '')
+            .replace(/^/gm, '  ');
         return {
             status: ParseResult.Ok,
             value: {
                 message: message,
-                text: `Data ${dataText}\n${typ.name} ${messageText}`,
+                text: `Data:\n${dataText}\n${typ.name}:\n${messageText}`,
             },
         };
     } catch (error) {

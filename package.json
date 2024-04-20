@@ -11,7 +11,8 @@
   "dependencies": {
     "@bufbuild/protobuf": "^1.8.0",
     "crypto-js": "^4.2.0",
-    "paho-mqtt": "^1.1.0"
+    "paho-mqtt": "^1.1.0",
+    "yaml": "^2.4.1"
   },
   "devDependencies": {
     "@buf/meshtastic_protobufs.bufbuild_es": "1.8.0-20240325205556-b11811405eea.2",
