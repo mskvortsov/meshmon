@@ -1,21 +1,35 @@
 'use strict';
 
+import * as Crypto from './crypto.js';
+import * as Format from './format.js';
 import * as Protobufs from './protobufs.js';
-import { stringify as yamlStringify } from 'yaml'
-
-import CryptoJS from 'crypto-js/core';
-import Base64 from 'crypto-js/enc-base64';
-import AES from 'crypto-js/aes';
-import 'crypto-js/mode-ctr';
-import 'crypto-js/pad-nopadding';
-import 'crypto-js/lib-typedarrays';
 
 import Paho from 'paho-mqtt';
 
 const defaultMqttUrl = 'mqtt.eclipseprojects.io';
 const defaultMqttTopic = 'msh';
-const defaultKey = Base64.parse('1PG7OiApB1nwvP+rz05pAQ==');
 const defaultMaxPackets = 2048;
+
+const fields = [
+    'rxTime', 'gatewayId', 'channelId', 'id', 'hopStart', 'hopLimit',
+    'wantAck', 'viaMqtt', 'rxRssi', 'rxSnr', 'from', 'to', 'portnum',
+];
+
+const dummyHeader = {
+    rxTime: new Date(0).toISOString(),
+    gatewayId: '!00000000',
+    channelId: 'LongChannelName',
+    id: '00000000',
+    hopStart: 0,
+    hopLimit: 0,
+    wantAck: '0',
+    viaMqtt: '0',
+    rxRssi: -120,
+    rxSnr: -20.25,
+    from: '!00000000',
+    to: '!00000000',
+    portnum: '75',
+};
 
 var packets        = [];
 var users          = new Map();
@@ -25,201 +39,13 @@ var mqttTopicInput = null;
 var mqttClient     = null;
 var mqttStatusHint = null;
 const mqttClientId = 'meshmon-' +
-    formatHex(Math.floor(Math.random() * (2 ** 32 - 1)), 8);
+    Format.hex(Math.floor(Math.random() * (2 ** 32 - 1)), 8);
 
 var tbody          = null;
 var statusRow      = null;
 var connectButton  = null;
 var filterInput    = null;
 var filterExpr     = (_h) => { return true; };
-
-function formatTime(v) {
-    const t = new Date(v * 1000);
-    return t.toISOString();
-}
-
-function formatHex(v, width) {
-    return v.toString(16).padStart(width, '0');
-}
-
-function formatId(v) {
-    return formatHex(v, 8);
-}
-
-function formatNodeId(v) {
-    return '!' + formatHex(v, 8);
-}
-
-function formatFloat(v) {
-    const n = new Number(v);
-    return n.toFixed(2);
-}
-
-function formatCoord(v) {
-    return v / 10000000;
-}
-
-function formatRoute(v) {
-    const route = [];
-    v.forEach((r) => {
-        route.push(formatNodeId(r));
-    });
-    return route;
-}
-
-function formatMacaddr(v) {
-    const words = Base64.parse(v);
-    const bytes = wordsToByteArray(words);
-    return Array.from(bytes).map((v) => formatHex(v, 2)).join(':');
-}
-
-function formatPayload(v) {
-    const words = Base64.parse(v);
-    const bytes = wordsToByteArray(words);
-    return `x${arrayToString(bytes)}`;
-}
-
-const formatters = new Map([
-    // Data
-    ['payload',            formatPayload],
-    ['dest',               formatNodeId],
-    ['source',             formatNodeId],
-    ['replyId',            formatId],
-    ['requestId',          formatId],
-
-    // Position
-    ['latitudeI',          formatCoord],
-    ['longitudeI',         formatCoord],
-
-    // NeighborInfo
-    ['nodeId',             formatNodeId],
-    ['lastSentById',       formatNodeId],
-
-    // RouteDiscovery
-    ['route',              formatRoute],
-
-    // Telemetry
-    ['time',               formatTime],
-
-    // DeviceMetrics
-    ['voltage',            formatFloat],
-    ['channelUtilization', formatFloat],
-    ['airUtilTx',          formatFloat],
-
-    // EnvironmentMetrics
-    ['temperature',        formatFloat],
-    ['relativeHumidity',   formatFloat],
-    ['barometricPressure', formatFloat],
-    ['gasResistance',      formatFloat],
-    ['voltage',            formatFloat],
-    ['current',            formatFloat],
-
-    // User
-    ['macaddr',            formatMacaddr],
-]);
-
-const ParseResult = {
-    Ok:  0,
-    Err: 1,
-    NYI: 2,
-};
-
-function parseDecoded(data) {
-    const typ = parsers.get(data.portnum);
-    if (typ === undefined) {
-        return {
-            status: ParseResult.NYI,
-        };
-    }
-    try {
-        const replacer = (k, v) => {
-            const formatter = formatters.get(k);
-            return formatter ? formatter(v) : v;
-        };
-        const dataText = yamlStringify(data.toJson(), replacer)
-            .replace(/\n+$/gm, '')
-            .replace(/^/gm, '  ');
-        const message = typ.fromBinary(data.payload);
-        const messageText = yamlStringify(message.toJson(), replacer)
-            .replace(/\n+$/gm, '')
-            .replace(/^/gm, '  ');
-        return {
-            status: ParseResult.Ok,
-            value: {
-                message: message,
-                text: `Data:\n${dataText}\n${typ.name}:\n${messageText}`,
-            },
-        };
-    } catch (error) {
-        return {
-            status: ParseResult.Err,
-            error: error
-        };
-    }
-}
-
-const Text = {
-    name: 'Text',
-    fromBinary: (bytes, _options) => {
-        return { message: new TextDecoder().decode(bytes) };
-    }
-};
-
-const parsers = new Map([
-    [Protobufs.Portnums.PortNum.TEXT_MESSAGE_APP,  Text                                  ],
-    [Protobufs.Portnums.PortNum.POSITION_APP,      Protobufs.Mesh.Position               ],
-    [Protobufs.Portnums.PortNum.NODEINFO_APP,      Protobufs.Mesh.User                   ],
-    [Protobufs.Portnums.PortNum.ROUTING_APP,       Protobufs.Mesh.Routing                ],
-    [Protobufs.Portnums.PortNum.STORE_FORWARD_APP, Protobufs.StoreForward.StoreAndForward],
-    [Protobufs.Portnums.PortNum.TELEMETRY_APP,     Protobufs.Telemetry.Telemetry         ],
-    [Protobufs.Portnums.PortNum.TRACEROUTE_APP,    Protobufs.Mesh.RouteDiscovery         ],
-    [Protobufs.Portnums.PortNum.NEIGHBORINFO_APP,  Protobufs.Mesh.NeighborInfo           ],
-]);
-
-function swap32(val) {
-    return ((val & 0xff000000) >>> 24)
-         | ((val & 0x00ff0000) >>>  8)
-         | ((val & 0x0000ff00) <<   8)
-         | ((val & 0x000000ff) <<  24);
-}
-
-function wordsToByteArray(wordArray) {
-    var byteArray = new Uint8Array(wordArray.sigBytes);
-    for (var i = 0; i < wordArray.sigBytes; ++i) {
-        byteArray[i] = (wordArray.words[i >>> 2] >>> (24 - ((i & 3) << 3))) & 0xff;
-    }
-    return byteArray;
-}
-
-function arrayToString(arr) {
-    return Array.from(arr).map((v) => formatHex(v, 2)).join('');
-}
-
-function decrypt(packet, key) {
-    const iv = CryptoJS.lib.WordArray.create([
-        swap32(packet.id), 0,
-        swap32(packet.from), 0,
-    ]);
-
-    const encrypted = CryptoJS.lib.WordArray.create(packet.payloadVariant.value);
-    const decrypted = AES.decrypt(
-        CryptoJS.lib.CipherParams.create({
-            ciphertext: encrypted,
-        }),
-        key,
-        {
-            mode: CryptoJS.mode.CTR,
-            iv: iv,
-            padding: CryptoJS.pad.NoPadding,
-        }
-    );
-
-    try {
-        return Protobufs.Mesh.Data.fromBinary(wordsToByteArray(decrypted));
-    } catch (error) {
-        return undefined;
-    }
-}
 
 function mqttOnConnect() {
     connectButton.textContent = 'Disconnect';
@@ -275,26 +101,6 @@ function onClickConnect() {
     }
 }
 
-const fields = [
-    'rxTime', 'gatewayId', 'channelId', 'id', 'hopStart', 'hopLimit',
-    'wantAck', 'viaMqtt', 'rxRssi', 'rxSnr', 'from', 'to', 'portnum',
-];
-const dummyHeader = {
-    rxTime: new Date(0).toISOString(),
-    gatewayId: '!00000000',
-    channelId: 'LongChannelName',
-    id: '00000000',
-    hopStart: 0,
-    hopLimit: 0,
-    wantAck: '0',
-    viaMqtt: '0',
-    rxRssi: -120,
-    rxSnr: -20.25,
-    from: '!00000000',
-    to: '!00000000',
-    portnum: '75',
-};
-
 function tooltipOnMouseOver(e) {
     const spanIdText = e.target;
     const spanTooltipText = spanIdText.nextElementSibling;
@@ -346,14 +152,14 @@ function render(se, header, data, parsed) {
 
     var text = '';
     if (se.packet.payloadVariant.case == 'encrypted') {
-        text += `Encrypted x${arrayToString(se.packet.payloadVariant.value)}\n`;
+        text += `Encrypted x${Format.bytesToString(se.packet.payloadVariant.value)}\n`;
     }
 
-    if (parsed.status == ParseResult.Ok) {
+    if (parsed.status == Format.Result.Ok) {
         text += parsed.value.text;
-    } else if (parsed.status == ParseResult.Err) {
+    } else if (parsed.status == Format.Result.Err) {
         text += `Error ${parsed.error.message}`;
-    } else if (parsed.status == ParseResult.NYI) {
+    } else if (parsed.status == Format.Result.NYI) {
         text += `NYI ${data.portnum}`;
     } else {
         console.error('parsing error');
@@ -396,37 +202,44 @@ function mqttOnMessage(message) {
     } catch (error) {
         console.error(`Failed to decode ServiceEnvelope: ${error}`);
         console.error(`Topic: ${message.topic}`);
-        console.error(`Message: x${arrayToString(message.payloadBytes)}`);
+        console.error(`Message: x${Format.bytesToString(message.payloadBytes)}`);
         return;
     }
 
-    const data = se.packet.payloadVariant.case == 'encrypted' ?
-        decrypt(se.packet, defaultKey) :
-        se.packet.payloadVariant.value;
+    var data = se.packet.payloadVariant.value;
+    if (se.packet.payloadVariant.case == 'encrypted') {
+        try {
+            const decrypted = Crypto.decrypt(se.packet, Crypto.defaultKey);
+            data = Protobufs.Mesh.Data.fromBinary(decrypted);
+        } catch (error) {
+            console.log(`Failed to decode Data: ${error}`);
+            console.log(`Message: x${Format.bytesToString(decrypted)}`);
+        }
+    }
 
     const header = {
-        rxTime:    formatTime(se.packet.rxTime),
+        rxTime:    Format.time(se.packet.rxTime),
         gatewayId: se.gatewayId,
         channelId: se.channelId,
-        id:        formatId(se.packet.id),
+        id:        Format.id(se.packet.id),
         hopStart:  se.packet.hopStart,
         hopLimit:  se.packet.hopLimit,
         wantAck:   se.packet.wantAck ? '1' : '0',
         viaMqtt:   se.packet.viaMqtt ? '1' : '0',
         rxRssi:    se.packet.rxRssi,
         rxSnr:     se.packet.rxSnr,
-        from:      formatNodeId(se.packet.from),
-        to:        formatNodeId(se.packet.to),
+        from:      Format.nodeId(se.packet.from),
+        to:        Format.nodeId(se.packet.to),
     };
 
     var parsed = null;
     if (data !== undefined) {
         header.portnum = data.portnum;
-        parsed = parseDecoded(data);
+        parsed = Format.parseDecoded(data);
     } else {
         header.portnum = '?';
         parsed = {
-            status: ParseResult.Err,
+            status: Format.Result.Err,
             error: new Error('Decoding failure')
         };
     }
@@ -436,8 +249,9 @@ function mqttOnMessage(message) {
     }
     packets.push({ se, header, data, parsed });
 
-    if (data && data.portnum == Protobufs.Portnums.PortNum.NODEINFO_APP &&
-        parsed.status == ParseResult.Ok) {
+    if (data !== undefined &&
+        data.portnum == Protobufs.Portnums.PortNum.NODEINFO_APP &&
+        parsed.status == Format.Result.Ok) {
         const user = parsed.value.message;
         users.set(user.id, user);
         document.getElementById('nodes-seen').innerHTML =
