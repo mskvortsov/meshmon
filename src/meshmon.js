@@ -11,24 +11,37 @@ const defaultMqttTopic = 'msh';
 const defaultMaxPackets = 2048;
 
 const fields = [
-    'rxTime', 'gatewayId', 'channelId', 'id', 'hopStart', 'hopLimit',
-    'wantAck', 'viaMqtt', 'rxRssi', 'rxSnr', 'from', 'to', 'portnum',
+    ['rxTime',    'time', 'The time the message was received by the node'],
+    ['gatewayId', 'gw',   'The sending MQTT-gateway node ID'],
+    ['channelId', 'ch',   'The global channel ID the message was sent on'],
+    ['id',        'id',   'The unique ID for the packet'],
+    ['from',      'from', 'The sending node ID'],
+    ['to',        'to',   'The (immediate) destination node ID for the packet'],
+    ['hopStart',  'hs',   'The hop limit with which the original packet started'],
+    ['hopLimit',  'hl',   'The maximum number of hops allowed'],
+    ['wantAck',   'wa',   'Whether it is expected to receive an ack packet in response'],
+    ['viaMqtt',   'vm',   'Whether the packet passed via MQTT somewhere along the path it currently took'],
+    ['priority',  'pri',  'The priority of the packet for sending'],
+    ['rxRssi',    'rssi', 'Received Signal Strength Indicator for the received packet'],
+    ['rxSnr',     'snr',  'Signal-to-Noise Ratio for the recived packet'],
+    ['portnum',   'port', 'The tag of the Data payload type'],
 ];
 
 const dummyHeader = {
-    rxTime: new Date(0).toISOString(),
-    gatewayId: '!00000000',
-    channelId: 'LongChannelName',
-    id: '00000000',
-    hopStart: 0,
-    hopLimit: 0,
-    wantAck: '0',
-    viaMqtt: '0',
-    rxRssi: -120,
-    rxSnr: -20.25,
+    time: new Date(0).toISOString(),
+    gw:   '!00000000',
+    ch:   'LongChannelName',
+    id:   '00000000',
+    hs:   0,
+    hl:   0,
+    wa:   '0',
+    vm:   '0',
+    pri:  0,
+    rssi: -120,
+    snr:  -20.25,
     from: '!00000000',
-    to: '!00000000',
-    portnum: '75',
+    to:   '!00000000',
+    port: '75',
 };
 
 var packets        = [];
@@ -125,12 +138,12 @@ function render(se, header, data, parsed) {
         headerRow.className = 'packet-header-row verbatim';
     }
 
-    fields.forEach((field) => {
+    fields.forEach(([_fieldId, fieldName, _fieldDesc]) => {
         const cell = headerRow.insertCell();
-        var value = header[field];
+        var value = header[fieldName];
         if (value == '!ffffffff') {
             cell.innerHTML = value;
-        } else if (field == 'gatewayId' || field == 'from' || field == 'to') {
+        } else if (fieldName == 'gw' || fieldName == 'from' || fieldName == 'to') {
             const spanIdText = document.createElement('span');
             spanIdText.innerHTML = value;
             spanIdText.onmouseover = tooltipOnMouseOver;
@@ -218,26 +231,27 @@ function mqttOnMessage(message) {
     }
 
     const header = {
-        rxTime:    Format.time(se.packet.rxTime),
-        gatewayId: se.gatewayId,
-        channelId: se.channelId,
-        id:        Format.id(se.packet.id),
-        hopStart:  se.packet.hopStart,
-        hopLimit:  se.packet.hopLimit,
-        wantAck:   se.packet.wantAck ? '1' : '0',
-        viaMqtt:   se.packet.viaMqtt ? '1' : '0',
-        rxRssi:    se.packet.rxRssi,
-        rxSnr:     se.packet.rxSnr,
-        from:      Format.nodeId(se.packet.from),
-        to:        Format.nodeId(se.packet.to),
+        time: Format.time(se.packet.rxTime),
+        gw:   se.gatewayId,
+        ch:   se.channelId,
+        id:   Format.id(se.packet.id),
+        from: Format.nodeId(se.packet.from),
+        to:   Format.nodeId(se.packet.to),
+        hs:   se.packet.hopStart,
+        hl:   se.packet.hopLimit,
+        wa:   se.packet.wantAck ? '1' : '0',
+        vm:   se.packet.viaMqtt ? '1' : '0',
+        pri:  se.packet.priority,
+        rssi: se.packet.rxRssi,
+        snr:  se.packet.rxSnr,
+        port: '?',
     };
 
     var parsed = null;
     if (data !== undefined) {
-        header.portnum = data.portnum;
+        header.port = data.portnum;
         parsed = Format.parseDecoded(data);
     } else {
-        header.portnum = '?';
         parsed = {
             status: Format.Result.Err,
             error: new Error('Decoding failure')
@@ -276,7 +290,7 @@ function onFilterEnter() {
         filterInput.classList.remove('filter-error');
     } else {
         const newFilterExpr = new Function('h', `{
-            const { ${fields.join(', ')} } = h;
+            const { ${fields.map((field) => field[1]).join(', ')} } = h;
             return ${filterInput.value};
         }`);
         try {
@@ -319,13 +333,16 @@ function switchTheme(e) {
 }
 
 window.onload = function() {
-    var theadRow = document.getElementById('thead-row');
-    var fitRow = document.getElementById('fit-row');
-    fields.forEach((field) => {
-        var th = theadRow.insertCell();
-        th.innerHTML = field;
-        var tf = fitRow.insertCell();
-        tf.innerHTML = dummyHeader[field];
+    const theadRow = document.getElementById('thead-row');
+    const fitRow = document.getElementById('fit-row');
+    fields.forEach(([fieldId, fieldName, fieldDesc]) => {
+        const th = theadRow.insertCell();
+        const div = document.createElement('div');
+        div.innerHTML = fieldName;
+        div.title = `(${fieldId}) ${fieldDesc}`;
+        th.appendChild(div);
+        const tf = fitRow.insertCell();
+        tf.innerHTML = dummyHeader[fieldName];
     });
 
     tbody = document.getElementById('tbody');
