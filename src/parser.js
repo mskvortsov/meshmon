@@ -104,7 +104,7 @@ const parsers = new Map([
 ]);
 
 export const Result = {
-  Ok: 0,
+  Ok:  0,
   Err: 1,
   Nyi: 2,
 
@@ -150,27 +150,45 @@ export function parse(message) {
       se: Result.err(new Error(
         `Failed to decode ServiceEnvelope: ${error}, ` +
         `Topic: ${message.topic}, ` +
-        `Message: x${Format.bytesToString(message.payloadBytes)}`
+        `Message: x${bytesToString(message.payloadBytes)}`
       )),
     };
   }
 
-  const header = {
-    time: time(se.packet.rxTime),
-    gw:   se.gatewayId,
-    ch:   se.channelId,
-    id:   id(se.packet.id),
-    from: nodeId(se.packet.from),
-    to:   nodeId(se.packet.to),
-    hs:   se.packet.hopStart,
-    hl:   se.packet.hopLimit,
-    wa:   se.packet.wantAck ? '1' : '0',
-    vm:   se.packet.viaMqtt ? '1' : '0',
-    pri:  se.packet.priority,
-    rssi: se.packet.rxRssi,
-    snr:  se.packet.rxSnr,
-    port: '?',
-  };
+  if (se.packet === undefined) {
+    return {
+      se: Result.err(new Error(
+        `Failed to decode ServiceEnvelope: missing packet field`
+      )),
+    };
+  }
+
+  var header;
+  try {
+    header = {
+      time: time(se.packet.rxTime),
+      gw:   se.gatewayId,
+      ch:   se.channelId,
+      id:   id(se.packet.id),
+      from: nodeId(se.packet.from),
+      to:   nodeId(se.packet.to),
+      hs:   se.packet.hopStart,
+      hl:   se.packet.hopLimit,
+      wa:   se.packet.wantAck ? '1' : '0',
+      vm:   se.packet.viaMqtt ? '1' : '0',
+      pri:  se.packet.priority,
+      rssi: se.packet.rxRssi,
+      snr:  se.packet.rxSnr,
+      port: '?',
+    };
+  } catch (error) {
+    return {
+      se: Result.ok(se),
+      header: Result.err(new Error(
+        `Failed to decode header: ${error}`
+      )),
+    };
+  }
 
   var data = se.packet.payloadVariant.value;
   if (se.packet.payloadVariant.case == 'encrypted') {
@@ -180,17 +198,25 @@ export function parse(message) {
     } catch (error) {
       return {
         se: Result.ok(se),
-        header: header,
+        header: Result.ok(header),
         parsed: Result.err(error),
       };
     }
+  }
+
+  if (data === undefined) {
+    return {
+      se: Result.ok(se),
+      header: Result.ok(header),
+      parsed: Result.err(new Error('Failed to decode data')),
+    };
   }
 
   header.port = data.portnum;
   const parsed = parseData(data);
   return {
     se: Result.ok(se),
-    header,
+    header: Result.ok(header),
     parsed,
     isUser:
       data.portnum == Protobufs.Portnums.PortNum.NODEINFO_APP &&

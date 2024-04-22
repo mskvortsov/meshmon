@@ -1,70 +1,70 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="UTF-8"/>
-        <title>Meshtastic MQTT Monitor</title>
-        <link rel="icon" type="image/svg+xml" href="assets/meshtastic.svg">
-        <link rel="stylesheet" href="src/meshmon.css">
-        <script type="module" src="src/meshmon.js"></script>
-    </head>
-    <body>
-        <table class="table-main">
-            <thead>
-                <tr id="filter-row">
-                    <th id="filter-cell">
-                        <table class="table-head">
-                            <tr>
-                                <td>
-                                    <input id="filter-expr-input" type="text"/>
-                                </td>
-                                <td>
-                                    <div id="nodes-seen" title="Nodes with a seen User packet">000</div>
-                                </td>
-                                <td>
-                                    <div class="theme-switch-wrapper">
-                                        <label class="theme-switch">
-                                            <input type="checkbox" id="theme-checkbox>"/>
-                                            <div class="theme-slider round"></div>
-                                        </label>
-                                    </div>
-                                </td>
-                            </tr>
-                        </table>
-                    </th>
-                </tr>
-                <tr id="thead-row" class="verbatim"></tr>
-            </thead>
-            <tbody id="tbody"></tbody>
-            <tfoot>
-                <tr id="fit-row" class="packet-header-row"></tr>
-                <tr id="status-row" class="status-disconnected">
-                    <td id="status-cell"></td>
-                </tr>
-                <tr>
-                    <td id="connect-cell">
-                        <table class="table-foot">
-                            <tr>
-                                <td class="left">
-                                    <label for="mqtt-url">Broker URL</label>
-                                    <input id="mqtt-url" type="text" size="30"/>
-                                    <label for="mqtt-topic">Topic</label>
-                                    <input id="mqtt-topic" type="text" size="10"/>
-                                    <button id="mqtt-connect">Connect</button>
-                                    <button id="clear">Clear</button>
-                                    <button id="unselect">Unselect</button>
-                                    <span id="mqtt-status"></span>
-                                </td>
-                                <td class="right">
-                                    <a href="https://github.com/mskvortsov/meshmon" target="_blank">
-                                        <img src="assets/github-mark.svg" class="logo logo-light"/>
-                                        <img src="assets/github-mark-white.svg" class="logo logo-dark"/>
-                                    </a>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-            </tfoot>
-        </table>
-    </body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Meshtastic MQTT Monitor</title>
+    <link rel="icon" type="image/svg+xml" href="assets/meshtastic.svg">
+    <link rel="stylesheet" href="src/meshmon.css">
+  </head>
+  <body>
+    <table class="table-main">
+      <thead>
+        <tr id="filter-row">
+          <th id="filter-cell">
+            <table class="table-head">
+              <tr>
+                <td>
+                  <input id="filter-expr-input" type="text" />
+                </td>
+                <td>
+                  <div id="nodes-seen" title="Nodes with a seen User packet">000</div>
+                </td>
+                <td>
+                  <div class="theme-switch-wrapper">
+                    <label class="theme-switch">
+                      <input type="checkbox" id="theme-checkbox>" />
+                      <div class="theme-slider round"></div>
+                    </label>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </th>
+        </tr>
+        <tr id="thead-row" class="verbatim"></tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+      <tfoot>
+        <tr id="fit-row" class="packet-header-row"></tr>
+        <tr id="status-row" class="status-disconnected">
+          <td id="status-cell"></td>
+        </tr>
+        <tr>
+          <td id="connect-cell">
+            <table class="table-foot">
+              <tr>
+                <td class="left">
+                  <label for="mqtt-url">Broker URL</label>
+                  <input id="mqtt-url" type="text" size="30" />
+                  <label for="mqtt-topic">Topic</label>
+                  <input id="mqtt-topic" type="text" size="10" />
+                  <button id="mqtt-connect">Connect</button>
+                  <button id="clear">Clear</button>
+                  <button id="unselect">Unselect</button>
+                  <span id="mqtt-status"></span>
+                </td>
+                <td class="right">
+                  <a href="https://github.com/mskvortsov/meshmon" target="_blank">
+                    <img src="assets/github-mark.svg" class="logo logo-light" />
+                    <img src="assets/github-mark-white.svg" class="logo logo-dark" />
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+    <script type="module" src="src/meshmon.js"></script>
+  </body>
 </html>

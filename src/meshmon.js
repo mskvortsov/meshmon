@@ -210,11 +210,16 @@ function mqttOnMessage(message) {
     console.log(se.error);
     return;
   }
+  if (header.status != Parser.Result.Ok) {
+    console.assert(header.status == Parser.Result.Err);
+    console.log(header.error);
+    return;
+  }
 
   if (packets.length > defaultMaxPackets) {
     packets.shift();
   }
-  packets.push({ se: se.value, header, parsed });
+  packets.push({ se: se.value, header: header.value, parsed });
 
   if (isUser) {
     console.assert(parsed.status == Parser.Result.Ok);
@@ -225,8 +230,8 @@ function mqttOnMessage(message) {
   }
 
   const scrollDown = window.scrollY + window.innerHeight + 42 > document.body.scrollHeight;
-  if (filterExpr(header)) {
-    render(se.value, header, parsed);
+  if (filterExpr(header.value)) {
+    render(se.value, header.value, parsed);
   }
 
   if (scrollDown) {
@@ -284,7 +289,7 @@ function switchTheme(e) {
   }
 }
 
-window.onload = function () {
+function setup() {
   const theadRow = document.getElementById('thead-row');
   const fitRow = document.getElementById('fit-row');
   fields.forEach(([fieldId, fieldName, fieldDesc]) => {
@@ -352,4 +357,6 @@ window.onload = function () {
 
   toggleSwitch.addEventListener('change', switchTheme, false);
   connectButton.click();
-};
+}
+
+setup();
