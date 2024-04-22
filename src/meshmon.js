@@ -55,6 +55,26 @@ var connectButton = null;
 var filterInput = null;
 var filterExpr = (_h) => { return true; };
 
+class SeenMessages {
+  constructor(timeout = 60000) {
+    this.timeout = timeout;
+    this.table = new Map();
+  }
+  addAndCheck(id) {
+    const now = Date.now();
+    this.table.forEach((time, id, table) => {
+      if (time < now - this.timeout) {
+        table.delete(id);
+      }
+    });
+    const ret = this.table.has(id);
+    this.table.set(id, now);
+    return ret;
+  }
+};
+
+const seenMessages = new SeenMessages();
+
 function mqttOnConnect() {
   connectButton.textContent = 'Disconnect';
   connectButton.disabled = false;
@@ -120,21 +140,41 @@ function tooltipOnMouseOver(e) {
   }
 }
 
-function render(se, header, parsed) {
-  if (tbody.rows.length > defaultMaxPackets * 2) {
-    tbody.deleteRow(0);
-    tbody.deleteRow(0);
+function updateCollapser(collapsed, cell) {
+  if (collapsed) {
+    cell.innerHTML = '+';
+    cell.title = 'Expand';
+  } else {
+    cell.innerHTML = '-';
+    cell.title = 'Collapse';
+  }
+}
+
+function renderCollapser(seen, cell) {
+  cell.classList.add('collapser');
+  updateCollapser(seen, cell);
+
+  cell.onclick = (e) => {
+    e.stopPropagation();
+    const td = e.target;
+    const decodedRow = td.parentNode.nextElementSibling;
+    const collapsed = decodedRow.classList.toggle('collapsed');
+    updateCollapser(collapsed, cell);
+  };
+}
+
+function renderHeaderRow(seen, se, header) {
+  const row = tbody.insertRow();
+  if (se.packet.rxRssi == 0) {
+    row.className = 'packet-header-row-outbound verbatim';
+  } else {
+    row.className = 'packet-header-row verbatim';
   }
 
-  var headerRow = tbody.insertRow();
-  if (se.packet.rxRssi == 0) {
-    headerRow.className = 'packet-header-row-outbound verbatim';
-  } else {
-    headerRow.className = 'packet-header-row verbatim';
-  }
+  renderCollapser(seen, row.insertCell());
 
   fields.forEach(([_fieldId, fieldName, _fieldDesc]) => {
-    const cell = headerRow.insertCell();
+    const cell = row.insertCell();
     var value = header[fieldName];
     if (value == '!ffffffff') {
       cell.innerHTML = value;
@@ -158,6 +198,46 @@ function render(se, header, parsed) {
     }
   });
 
+  row.onclick = () => {
+    if (document.getSelection() != "") {
+      return;
+    }
+    row.classList.toggle('selected');
+    row.nextElementSibling.classList.toggle('selected');
+  };
+}
+
+function renderDecodedRow(seen, text) {
+  const row = tbody.insertRow();
+  row.className = 'packet-decoded verbatim';
+  if (seen) {
+    row.classList.add('collapsed');
+  }
+
+  const cell = row.insertCell();
+  cell.colSpan = fields.length + 1;
+  const pre = document.createElement('pre');
+  pre.textContent = text;
+  cell.appendChild(pre);
+
+  row.onclick = () => {
+    if (document.getSelection() != "") {
+      return;
+    }
+    row.previousElementSibling.classList.toggle('selected');
+    row.classList.toggle('selected');
+  };
+}
+
+function render(se, header, parsed, force) {
+  if (tbody.rows.length > defaultMaxPackets * 2) {
+    tbody.deleteRow(0);
+    tbody.deleteRow(0);
+  }
+
+  const seen = force || seenMessages.addAndCheck(header.id);
+  renderHeaderRow(seen, se, header);
+
   var text = '';
   if (se.packet.payloadVariant.case == 'encrypted') {
     text += `Encrypted x${Parser.bytesToString(se.packet.payloadVariant.value)}\n`;
@@ -173,28 +253,7 @@ function render(se, header, parsed) {
     console.assert(false);
   }
 
-  var decodedRow = tbody.insertRow();
-  decodedRow.className = 'packet-decoded verbatim';
-  var cell = decodedRow.insertCell();
-  cell.colSpan = fields.length;
-  var decoded = document.createElement('pre');
-  decoded.textContent = text;
-  cell.appendChild(decoded);
-
-  headerRow.onclick = () => {
-    if (document.getSelection() != "") {
-      return;
-    }
-    headerRow.classList.toggle('selected');
-    headerRow.nextElementSibling.classList.toggle('selected');
-  };
-  decodedRow.onclick = () => {
-    if (document.getSelection() != "") {
-      return;
-    }
-    decodedRow.previousElementSibling.classList.toggle('selected');
-    decodedRow.classList.toggle('selected');
-  };
+  renderDecodedRow(seen, text);
 }
 
 function mqttOnMessage(message) {
@@ -231,7 +290,7 @@ function mqttOnMessage(message) {
 
   const scrollDown = window.scrollY + window.innerHeight + 42 > document.body.scrollHeight;
   if (filterExpr(header.value)) {
-    render(se.value, header.value, parsed);
+    render(se.value, header.value, parsed, false);
   }
 
   if (scrollDown) {
@@ -266,7 +325,7 @@ function onFilterEnter() {
   tbody.innerHTML = '';
   packets.forEach(({ se, header, parsed }) => {
     if (filterExpr(header)) {
-      render(se, header, parsed);
+      render(se, header, parsed, true);
     }
   });
 
@@ -289,9 +348,13 @@ function switchTheme(e) {
   }
 }
 
-function setup() {
+function renderFitRow() {
   const theadRow = document.getElementById('thead-row');
   const fitRow = document.getElementById('fit-row');
+  // header field for hide/unhide decoded row
+  theadRow.insertCell();
+  fitRow.insertCell().innerHTML = ' ';
+  // ordinary header field columns
   fields.forEach(([fieldId, fieldName, fieldDesc]) => {
     const th = theadRow.insertCell();
     const div = document.createElement('div');
@@ -301,13 +364,34 @@ function setup() {
     const tf = fitRow.insertCell();
     tf.innerHTML = dummyHeader[fieldName];
   });
+}
+
+function setupThemeSwitcher() {
+  const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
+  const currentTheme = localStorage.getItem('theme');
+
+  if (currentTheme) {
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    if (currentTheme === 'dark') {
+      toggleSwitch.checked = true;
+    }
+  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    toggleSwitch.checked = true;
+  }
+
+  toggleSwitch.addEventListener('change', switchTheme, false);
+}
+
+function setup() {
+  renderFitRow();
 
   tbody = document.getElementById('tbody');
 
   statusRow = document.getElementById('status-row');
-  document.getElementById('status-cell').colSpan = fields.length;
-  document.getElementById('connect-cell').colSpan = fields.length;
-  document.getElementById('filter-cell').colSpan = fields.length;
+  document.getElementById('status-cell').colSpan  = fields.length + 1;
+  document.getElementById('connect-cell').colSpan = fields.length + 1;
+  document.getElementById('filter-cell').colSpan  = fields.length + 1;
 
   mqttUrlInput = document.getElementById('mqtt-url');
   mqttUrlInput.placeholder = defaultMqttUrl;
@@ -342,21 +426,8 @@ function setup() {
   mqttUrlInput.value = localStorage.getItem('url') ?? defaultMqttUrl;
   mqttTopicInput.value = localStorage.getItem('topic') ?? defaultMqttTopic;
 
-  const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
-  const currentTheme = localStorage.getItem('theme');
-
-  if (currentTheme) {
-    document.documentElement.setAttribute('data-theme', currentTheme);
-    if (currentTheme === 'dark') {
-      toggleSwitch.checked = true;
-    }
-  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    document.documentElement.setAttribute('data-theme', 'dark');
-    toggleSwitch.checked = true;
-  }
-
-  toggleSwitch.addEventListener('change', switchTheme, false);
-  connectButton.click();
+  setupThemeSwitcher();
 }
 
 setup();
+connectButton.click();

@@ -13,7 +13,6 @@
     "@bufbuild/protobuf": "^1.8.0",
     "crypto-js": "^4.2.0",
     "paho-mqtt": "^1.1.0",
-    "up": "^1.0.2",
     "yaml": "^2.4.1"
   },
   "devDependencies": {
