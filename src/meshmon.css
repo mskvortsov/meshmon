@@ -290,7 +290,13 @@ input:checked+.theme-slider:before {
 }
 
 /* For Safari */
+
 input, button {
   font-family: var(--font-family-main);
   font-size: 14px;
+}
+
+pre {
+  font-family: var(--font-family-verbatim);
+  font-size: 12px;
 }
