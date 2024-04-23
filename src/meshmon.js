@@ -140,7 +140,7 @@ function tooltipOnMouseOver(e) {
   }
 }
 
-function updateCollapser(collapsed, cell) {
+function updateCollapser(cell, collapsed) {
   if (collapsed) {
     cell.innerHTML = '+';
     cell.title = 'Expand';
@@ -150,20 +150,20 @@ function updateCollapser(collapsed, cell) {
   }
 }
 
-function renderCollapser(seen, cell) {
+function renderCollapser(cell, collapsed) {
   cell.classList.add('collapser');
-  updateCollapser(seen, cell);
+  updateCollapser(cell, collapsed);
 
   cell.onclick = (e) => {
     e.stopPropagation();
     const td = e.target;
     const decodedRow = td.parentNode.nextElementSibling;
     const collapsed = decodedRow.classList.toggle('collapsed');
-    updateCollapser(collapsed, cell);
+    updateCollapser(cell, collapsed);
   };
 }
 
-function renderHeaderRow(seen, se, header) {
+function renderHeaderRow(se, header, collapsed) {
   const row = tbody.insertRow();
   if (se.packet.rxRssi == 0) {
     row.className = 'packet-header-row-outbound verbatim';
@@ -171,7 +171,7 @@ function renderHeaderRow(seen, se, header) {
     row.className = 'packet-header-row verbatim';
   }
 
-  renderCollapser(seen, row.insertCell());
+  renderCollapser(row.insertCell(), collapsed);
 
   fields.forEach(([_fieldId, fieldName, _fieldDesc]) => {
     const cell = row.insertCell();
@@ -207,10 +207,10 @@ function renderHeaderRow(seen, se, header) {
   };
 }
 
-function renderDecodedRow(seen, text) {
+function renderDecodedRow(text, collapsed) {
   const row = tbody.insertRow();
   row.className = 'packet-decoded verbatim';
-  if (seen) {
+  if (collapsed) {
     row.classList.add('collapsed');
   }
 
@@ -229,14 +229,14 @@ function renderDecodedRow(seen, text) {
   };
 }
 
-function render(se, header, parsed, force) {
+function render(se, header, parsed, forceExpanded) {
   if (tbody.rows.length > defaultMaxPackets * 2) {
     tbody.deleteRow(0);
     tbody.deleteRow(0);
   }
 
-  const seen = force || seenMessages.addAndCheck(header.id);
-  renderHeaderRow(seen, se, header);
+  const collapsed = !forceExpanded && seenMessages.addAndCheck(header.id);
+  renderHeaderRow(se, header, collapsed);
 
   var text = '';
   if (se.packet.payloadVariant.case == 'encrypted') {
@@ -253,7 +253,7 @@ function render(se, header, parsed, force) {
     console.assert(false);
   }
 
-  renderDecodedRow(seen, text);
+  renderDecodedRow(text, collapsed);
 }
 
 function mqttOnMessage(message) {
