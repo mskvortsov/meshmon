@@ -129,12 +129,16 @@ function parseData(data) {
     return Result.nyi();
   }
   try {
-    const dataText = stringify(data.toJson());
+    const dataWithoutPayload = data.clone();
+    dataWithoutPayload.payload = new Uint8Array();
+    const dataText = stringify(dataWithoutPayload.toJson());
+
     const message = typ.fromBinary(data.payload);
     const messageText = stringify(message.toJson());
+
     return Result.ok({
       message: message,
-      text: `${typ.name}:\n${messageText}`,
+      text: `Data:\n${dataText}\n${typ.name}:\n${messageText}`,
     });
   } catch (error) {
     return Result.err(error);
