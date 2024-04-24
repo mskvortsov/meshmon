@@ -176,7 +176,7 @@ body {
 .table-main tbody tr td:nth-child(2) {
   border-left: none;
 }
-.collapser {
+.collapser, .payload {
   user-select: none;
   cursor: pointer;
   font-weight: bold;

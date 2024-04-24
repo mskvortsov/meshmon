@@ -163,7 +163,30 @@ function renderCollapser(cell, collapsed) {
   };
 }
 
-function renderHeaderRow(se, header, collapsed) {
+function renderHexPayload(cell, payload) {
+  const spanContent = document.createElement('span');
+  spanContent.innerHTML = Parser.bytesToString(payload);
+  spanContent.hidden = true;
+  cell.appendChild(spanContent);
+
+  const spanMark = document.createElement('span');
+  spanMark.innerHTML = 'B';
+  cell.appendChild(spanMark);
+
+  cell.classList.add('payload');
+  cell.title = 'Copy ServiceEnvelope bytes to clipboard';
+  cell.onclick = (e) => {
+    e.stopPropagation();
+    const content = e.currentTarget.firstChild.innerHTML;
+    navigator.clipboard.writeText(content);
+    e.currentTarget.animate([
+      { opacity: 0.5 },
+      { opacity: 1.0 },
+    ], 300);
+  }
+}
+
+function renderHeaderRow(payload, se, header, collapsed) {
   const row = tbody.insertRow();
   if (se.packet.rxRssi == 0) {
     row.className = 'packet-header-row-outbound verbatim';
@@ -172,6 +195,7 @@ function renderHeaderRow(se, header, collapsed) {
   }
 
   renderCollapser(row.insertCell(), collapsed);
+  renderHexPayload(row.insertCell(), payload);
 
   fields.forEach(([_fieldId, fieldName, _fieldDesc]) => {
     const cell = row.insertCell();
@@ -215,7 +239,7 @@ function renderDecodedRow(text, collapsed) {
   }
 
   const cell = row.insertCell();
-  cell.colSpan = fields.length + 1;
+  cell.colSpan = fields.length + 2;
   const pre = document.createElement('pre');
   pre.textContent = text;
   cell.appendChild(pre);
@@ -229,26 +253,22 @@ function renderDecodedRow(text, collapsed) {
   };
 }
 
-function render(se, header, parsed, forceExpanded) {
+function render(payload, se, header, parsed, forceExpanded) {
   if (tbody.rows.length > defaultMaxPackets * 2) {
     tbody.deleteRow(0);
     tbody.deleteRow(0);
   }
 
   const collapsed = !forceExpanded && seenMessages.addAndCheck(header.id);
-  renderHeaderRow(se, header, collapsed);
+  renderHeaderRow(payload, se, header, collapsed);
 
-  var text = '';
-  if (se.packet.payloadVariant.case == 'encrypted') {
-    text += `Encrypted x${Parser.bytesToString(se.packet.payloadVariant.value)}\n`;
-  }
-
+  var text;
   if (parsed.status == Parser.Result.Ok) {
-    text += parsed.value.text;
+    text = parsed.value.text;
   } else if (parsed.status == Parser.Result.Err) {
-    text += `Error ${parsed.error.message}`;
+    text = `Error ${parsed.error.message}`;
   } else if (parsed.status == Parser.Result.Nyi) {
-    text += `NYI ${header.port}`;
+    text = `NYI ${header.port}`;
   } else {
     console.assert(false);
   }
@@ -275,10 +295,15 @@ function mqttOnMessage(message) {
     return;
   }
 
-  if (packets.length > defaultMaxPackets) {
+  while (packets.length > defaultMaxPackets) {
     packets.shift();
   }
-  packets.push({ se: se.value, header: header.value, parsed });
+  packets.push({
+    payload: message.payloadBytes,
+    se: se.value,
+    header: header.value,
+    parsed
+  });
 
   if (isUser) {
     console.assert(parsed.status == Parser.Result.Ok);
@@ -290,7 +315,7 @@ function mqttOnMessage(message) {
 
   const scrollDown = window.scrollY + window.innerHeight + 42 > document.body.scrollHeight;
   if (filterExpr(header.value)) {
-    render(se.value, header.value, parsed, false);
+    render(message.payloadBytes, se.value, header.value, parsed, false);
   }
 
   if (scrollDown) {
@@ -323,9 +348,9 @@ function onFilterEnter() {
   }
 
   tbody.innerHTML = '';
-  packets.forEach(({ se, header, parsed }) => {
+  packets.forEach(({ payload, se, header, parsed }) => {
     if (filterExpr(header)) {
-      render(se, header, parsed, true);
+      render(payload, se, header, parsed, true);
     }
   });
 
@@ -351,7 +376,10 @@ function switchTheme(e) {
 function renderFitRow() {
   const theadRow = document.getElementById('thead-row');
   const fitRow = document.getElementById('fit-row');
-  // header field for hide/unhide decoded row
+  // header field for hidning the decoded row
+  theadRow.insertCell();
+  fitRow.insertCell().innerHTML = ' ';
+  // header field for copying payload
   theadRow.insertCell();
   fitRow.insertCell().innerHTML = ' ';
   // ordinary header field columns
@@ -389,9 +417,9 @@ function setup() {
   tbody = document.getElementById('tbody');
 
   statusRow = document.getElementById('status-row');
-  document.getElementById('status-cell').colSpan  = fields.length + 1;
-  document.getElementById('connect-cell').colSpan = fields.length + 1;
-  document.getElementById('filter-cell').colSpan  = fields.length + 1;
+  document.getElementById('status-cell').colSpan  = fields.length + 2;
+  document.getElementById('connect-cell').colSpan = fields.length + 2;
+  document.getElementById('filter-cell').colSpan  = fields.length + 2;
 
   mqttUrlInput = document.getElementById('mqtt-url');
   mqttUrlInput.placeholder = defaultMqttUrl;
@@ -416,7 +444,7 @@ function setup() {
   filterInput = document.getElementById('filter-expr-input');
   filterInput.placeholder =
     'Filter: a JavaScript expression over header fields, ' +
-    'e.g. "channelId == \'LongFast\' && to != \'!ffffffff\'"';
+    'e.g. "ch == \'LongFast\' && to != \'!ffffffff\'"';
   filterInput.addEventListener('keypress', function (e) {
     if (e.key == 'Enter') {
       onFilterEnter();

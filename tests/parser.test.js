@@ -31,10 +31,7 @@ test('parse-succ', () => {
     'wa':   '0',
   });
   expect(res.parsed.status).toBe(Parser.Result.Ok);
-  expect(res.parsed.value.text).toBe(`Data:
-  portnum: TELEMETRY_APP
-  payload: x0ded462666120a1daaaa6a3f259ea8833f
-Telemetry:
+  expect(res.parsed.value.text).toBe(`Telemetry:
   time: 2024-04-22T11:15:57.000Z
   deviceMetrics:
     channelUtilization: \"0.92\"

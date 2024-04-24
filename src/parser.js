@@ -134,7 +134,7 @@ function parseData(data) {
     const messageText = stringify(message.toJson());
     return Result.ok({
       message: message,
-      text: `Data:\n${dataText}\n${typ.name}:\n${messageText}`,
+      text: `${typ.name}:\n${messageText}`,
     });
   } catch (error) {
     return Result.err(error);
