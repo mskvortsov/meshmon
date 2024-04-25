@@ -85,12 +85,21 @@ export function bytesToString(arr) {
   return Array.from(arr).map((v) => hex(v, 2)).join('');
 }
 
-const Text = {
-  name: 'Text',
-  fromBinary: (bytes, _options) => {
-    return { message: new TextDecoder().decode(bytes) };
+class Text {
+  constructor() {
+    this.name = 'Text';
   }
-};
+  static fromBinary(bytes) {
+    const text = new Text();
+    text.message = new TextDecoder().decode(bytes);
+    return text;
+  }
+  toJson() {
+    return {
+      message: this.message,
+    }
+  }
+}
 
 const parsers = new Map([
   [Protobufs.Portnums.PortNum.TEXT_MESSAGE_APP,  Text],
