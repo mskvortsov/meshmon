@@ -31,11 +31,35 @@ test('parse-succ', () => {
     'wa':   '0',
   });
   expect(res.parsed.status).toBe(Parser.Result.Ok);
-  expect(res.parsed.value.text).toBe(`Telemetry:
+  expect(res.parsed.value.text).toBe(`meshtastic.Data:
+  portnum: TELEMETRY_APP
+
+meshtastic.Telemetry:
   time: 2024-04-22T11:15:57.000Z
   deviceMetrics:
     channelUtilization: \"0.92\"
     airUtilTx: \"1.03\"`);
+  expect(res.isUser).toBe(false);
+});
+
+test('parse-succ-text', () => {
+  const message = {
+    payloadBytes: Util.bytes(
+      '0a260dbceab6a115e8f1470418082a086193ba83c83538e635dfd51cf1' +
+      '3d3bdd356648045001780412084c6f6e67466173741a09216131623665' +
+      '616263'
+    ),
+  };
+  const res = Parser.parse(message);
+
+  expect(res.se.status).toBe(Parser.Result.Ok);
+  expect(res.header.status).toBe(Parser.Result.Ok);
+  expect(res.parsed.status).toBe(Parser.Result.Ok);
+  expect(res.parsed.value.text).toBe(`meshtastic.Data:
+  portnum: TEXT_MESSAGE_APP
+
+Text:
+  message: Test`);
   expect(res.isUser).toBe(false);
 });
 

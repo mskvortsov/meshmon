@@ -86,9 +86,6 @@ export function bytesToString(arr) {
 }
 
 class Text {
-  constructor() {
-    this.name = 'Text';
-  }
   static fromBinary(bytes) {
     const text = new Text();
     text.message = new TextDecoder().decode(bytes);
@@ -100,6 +97,7 @@ class Text {
     }
   }
 }
+Text.typeName = "Text";
 
 const parsers = new Map([
   [Protobufs.Portnums.PortNum.TEXT_MESSAGE_APP,  Text],
@@ -147,7 +145,7 @@ function parseData(data) {
 
     return Result.ok({
       message: message,
-      text: `Data:\n${dataText}\n${typ.name}:\n${messageText}`,
+      text: `meshtastic.Data:\n${dataText}\n\n${typ.typeName}:\n${messageText}`,
     });
   } catch (error) {
     return Result.err(error);

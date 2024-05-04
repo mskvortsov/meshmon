@@ -25,18 +25,18 @@ const fields = [
 const dummyHeader = {
   time: new Date(0).toISOString(),
   gw:   '!00000000',
-  ch:   'LongChannelName',
+  ch:   'ElevenChars',
   id:   '00000000',
   hs:   0,
   hl:   0,
   wa:   '0',
   vm:   '0',
-  pri:  0,
+  pri:  127,
   rssi: -120,
   snr:  -20.25,
   from: '!00000000',
   to:   '!00000000',
-  port: '75',
+  port: '511',
 };
 
 var packets = [];
