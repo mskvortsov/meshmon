@@ -4,6 +4,7 @@ import Paho from 'paho-mqtt';
 const defaultMqttUrl = 'mqtt.eclipseprojects.io';
 const defaultMqttTopic = 'msh';
 const defaultMaxPackets = 2048;
+const defaultTextWidth = 80;
 
 const fields = [
   ['rxTime',    'time', 'The time the message was received by the node'],
@@ -231,6 +232,14 @@ function renderHeaderRow(payload, se, header, collapsed) {
   };
 }
 
+function fitTextToWidth(text, width) {
+  const re = new RegExp(`.{1,${width}}`, 'g');
+  return text
+    .split(/\r\n|\r|\n/g)
+    .map((l) => l.length > 0 ? l.match(re).join('¶\n') : '')
+    .join('\n');
+}
+
 function renderDecodedRow(text, collapsed) {
   const row = tbody.insertRow();
   row.className = 'packet-decoded verbatim';
@@ -241,7 +250,7 @@ function renderDecodedRow(text, collapsed) {
   const cell = row.insertCell();
   cell.colSpan = fields.length + 2;
   const pre = document.createElement('pre');
-  pre.textContent = text;
+  pre.textContent = fitTextToWidth(text, defaultTextWidth);
   cell.appendChild(pre);
 
   row.onclick = () => {
