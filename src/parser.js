@@ -81,8 +81,14 @@ const formatters = new Map([
   ['macaddr',            macaddr],
 ]);
 
-export function bytesToString(arr) {
-  return Array.from(arr).map((v) => hex(v, 2)).join('');
+export function bytesToString(bytes) {
+  return Array.from(bytes).map((v) => hex(v, 2)).join('');
+}
+
+function bytesToAscii(bytes) {
+  return bytes
+    .map((b) => 32 <= b && b <= 126 ? String.fromCharCode(b) : '.')
+    .join('');
 }
 
 class Text {
@@ -161,7 +167,8 @@ export function parse(message) {
       se: Result.err(new Error(
         `Failed to decode ServiceEnvelope: ${error}, ` +
         `Topic: ${message.topic}, ` +
-        `Message: x${bytesToString(message.payloadBytes)}`
+        `Message: x${bytesToString(message.payloadBytes)}, ` +
+        `Message ASCII: ${bytesToAscii(message.payloadBytes)}`
       )),
     };
   }

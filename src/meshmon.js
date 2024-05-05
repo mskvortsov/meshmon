@@ -191,9 +191,9 @@ function renderHexPayload(cell, payload) {
   }
 }
 
-function renderHeaderRow(payload, se, header, collapsed) {
+function renderHeaderRow(payload, header, collapsed) {
   const row = tbody.insertRow();
-  if (se.packet.rxRssi == 0) {
+  if (header.gw == header.from) {
     row.className = 'packet-header-row-outbound verbatim';
   } else {
     row.className = 'packet-header-row verbatim';
@@ -266,14 +266,14 @@ function renderDecodedRow(text, collapsed) {
   };
 }
 
-function render(payload, se, header, parsed, forceExpanded) {
+function render(payload, header, parsed, forceExpanded) {
   if (tbody.rows.length > defaultMaxPackets * 2) {
     tbody.deleteRow(0);
     tbody.deleteRow(0);
   }
 
   const collapsed = !forceExpanded && seenMessages.addAndCheck(header.id);
-  renderHeaderRow(payload, se, header, collapsed);
+  renderHeaderRow(payload, header, collapsed);
 
   var text;
   if (parsed.status == Parser.Result.Ok) {
@@ -330,7 +330,6 @@ function mqttOnMessage(message) {
   }
   packets.push({
     payload: message.payloadBytes,
-    se: se.value,
     header: header.value,
     parsed
   });
@@ -345,7 +344,7 @@ function mqttOnMessage(message) {
 
   const scrollDown = window.scrollY + window.innerHeight + 42 > document.body.scrollHeight;
   if (filterExpr(header.value)) {
-    render(message.payloadBytes, se.value, header.value, parsed, false);
+    render(message.payloadBytes, header.value, parsed, false);
   }
 
   if (scrollDown) {
@@ -378,9 +377,9 @@ function onFilterEnter() {
   }
 
   tbody.innerHTML = '';
-  packets.forEach(({ payload, se, header, parsed }) => {
+  packets.forEach(({ payload, header, parsed }) => {
     if (filterExpr(header)) {
-      render(payload, se, header, parsed, true);
+      render(payload, header, parsed, true);
     }
   });
 
