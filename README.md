@@ -1,11 +1,8 @@
 # Meshtastic MQTT Monitor
 
-A pure JavaScript application (no server backend used) that shows raw packet
-data acquired from a specified MQTT server. The server should have a WebSocket
-endpoint.
-
-Nodes should publish their packets in protobuf form by disabling JSON output
-in MQTT settings.
+A web browser application that shows meshtastic packet data acquired from an MQTT broker.
+The broker must have a secure WebSocket endpoint. There is no server backend — everything
+runs in a browser.
 
 The app is deployed at <https://mskvortsov.github.io/meshmon>
 
@@ -13,6 +10,6 @@ The app is deployed at <https://mskvortsov.github.io/meshmon>
 
 ```shell
 npm ci
-npm run generate
+npm run test
 npm run dev
 ```
