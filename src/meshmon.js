@@ -6,6 +6,10 @@ const defaultMqttTopic = 'msh';
 const defaultMaxPackets = 2048;
 const defaultTextWidth = 80;
 
+const labelCollapsed = '+';
+const labelExpanded = '-';
+const labelBinary = 'B';
+
 const fields = [
   ['rxTime',    'time', 'The time the message was received by the node'],
   ['gatewayId', 'gw',   'The sending MQTT-gateway node ID'],
@@ -143,10 +147,10 @@ function tooltipOnMouseOver(e) {
 
 function updateCollapser(cell, collapsed) {
   if (collapsed) {
-    cell.innerHTML = '+';
+    cell.innerHTML = labelCollapsed;
     cell.title = 'Expand';
   } else {
-    cell.innerHTML = '-';
+    cell.innerHTML = labelExpanded;
     cell.title = 'Collapse';
   }
 }
@@ -171,7 +175,7 @@ function renderHexPayload(cell, payload) {
   cell.appendChild(spanContent);
 
   const spanMark = document.createElement('span');
-  spanMark.innerHTML = 'B';
+  spanMark.innerHTML = labelBinary;
   cell.appendChild(spanMark);
 
   cell.classList.add('payload');
@@ -285,6 +289,23 @@ function render(payload, se, header, parsed, forceExpanded) {
   renderDecodedRow(text, collapsed);
 }
 
+function renderNodesSeen() {
+  document.getElementById('nodes-seen').innerHTML =
+    users.size.toString().padStart(3, '0');
+}
+
+function loadUsers() {
+  const usersJson = localStorage.getItem('users');
+  if (usersJson) {
+    users = new Map(Object.entries(JSON.parse(usersJson)));
+  }
+}
+
+function storeUsers() {
+  const usersJson = JSON.stringify(Object.fromEntries(users));
+  localStorage.setItem('users', usersJson);
+}
+
 function mqttOnMessage(message) {
   const topicLevels = message.topic.split('/');
   if (topicLevels.length == 0 || !topicLevels[topicLevels.length - 1].startsWith('!')) {
@@ -318,8 +339,8 @@ function mqttOnMessage(message) {
     console.assert(parsed.status == Parser.Result.Ok);
     const user = parsed.value.message;
     users.set(user.id, user);
-    document.getElementById('nodes-seen').innerHTML =
-      users.size.toString().padStart(3, '0');;
+    renderNodesSeen();
+    storeUsers();
   }
 
   const scrollDown = window.scrollY + window.innerHeight + 42 > document.body.scrollHeight;
@@ -387,10 +408,10 @@ function renderFitRow() {
   const fitRow = document.getElementById('fit-row');
   // header field for hidning the decoded row
   theadRow.insertCell();
-  fitRow.insertCell().innerHTML = ' ';
+  fitRow.insertCell().innerHTML = labelCollapsed;
   // header field for copying payload
   theadRow.insertCell();
-  fitRow.insertCell().innerHTML = ' ';
+  fitRow.insertCell().innerHTML = labelBinary;
   // ordinary header field columns
   fields.forEach(([fieldId, fieldName, fieldDesc]) => {
     const th = theadRow.insertCell();
@@ -421,6 +442,8 @@ function setupThemeSwitcher() {
 }
 
 function setup() {
+  loadUsers();
+  renderNodesSeen();
   renderFitRow();
 
   tbody = document.getElementById('tbody');

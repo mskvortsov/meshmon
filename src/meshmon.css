@@ -163,6 +163,8 @@ body {
   align-content: center;
   padding-right: 8px;
   border-radius: 5px;
+  user-select: none;
+  cursor: default;
 }
 
 /* Decoded row expanding and collapsing */
