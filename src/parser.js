@@ -91,29 +91,14 @@ function bytesToAscii(bytes) {
     .join('');
 }
 
-class Text {
-  static fromBinary(bytes) {
-    const text = new Text();
-    text.message = new TextDecoder().decode(bytes);
-    return text;
-  }
-  toJson() {
-    return {
-      message: this.message,
-    }
-  }
-}
-Text.typeName = "Text";
-
 const parsers = new Map([
-  [Protobufs.Portnums.PortNum.TEXT_MESSAGE_APP,  Text],
-  [Protobufs.Portnums.PortNum.POSITION_APP,      Protobufs.Mesh.Position],
-  [Protobufs.Portnums.PortNum.NODEINFO_APP,      Protobufs.Mesh.User],
-  [Protobufs.Portnums.PortNum.ROUTING_APP,       Protobufs.Mesh.Routing],
-  [Protobufs.Portnums.PortNum.STORE_FORWARD_APP, Protobufs.StoreForward.StoreAndForward],
-  [Protobufs.Portnums.PortNum.TELEMETRY_APP,     Protobufs.Telemetry.Telemetry],
-  [Protobufs.Portnums.PortNum.TRACEROUTE_APP,    Protobufs.Mesh.RouteDiscovery],
-  [Protobufs.Portnums.PortNum.NEIGHBORINFO_APP,  Protobufs.Mesh.NeighborInfo],
+  [Protobufs.Portnums.PortNum.POSITION_APP,      Protobufs.Mesh.PositionSchema],
+  [Protobufs.Portnums.PortNum.NODEINFO_APP,      Protobufs.Mesh.UserSchema],
+  [Protobufs.Portnums.PortNum.ROUTING_APP,       Protobufs.Mesh.RoutingSchema],
+  [Protobufs.Portnums.PortNum.STORE_FORWARD_APP, Protobufs.StoreForward.StoreAndForwardSchema],
+  [Protobufs.Portnums.PortNum.TELEMETRY_APP,     Protobufs.Telemetry.TelemetrySchema],
+  [Protobufs.Portnums.PortNum.TRACEROUTE_APP,    Protobufs.Mesh.RouteDiscoverySchema],
+  [Protobufs.Portnums.PortNum.NEIGHBORINFO_APP,  Protobufs.Mesh.NeighborInfoSchema],
 ]);
 
 export const Result = {
@@ -137,21 +122,34 @@ function stringify(json) {
 }
 
 function parseData(data) {
-  const typ = parsers.get(data.portnum);
-  if (typ === undefined) {
-    return Result.nyi();
-  }
   try {
-    const dataWithoutPayload = data.clone();
-    dataWithoutPayload.payload = new Uint8Array();
-    const dataText = stringify(dataWithoutPayload.toJson());
+    const dataJson = Protobufs.toJson(Protobufs.Mesh.DataSchema, data);
+    delete dataJson.payload;
+    const dataText = stringify(dataJson);
 
-    const message = typ.fromBinary(data.payload);
-    const messageText = stringify(message.toJson());
+    if (data.portnum === Protobufs.Portnums.PortNum.TEXT_MESSAGE_APP) {
+      const message = new TextDecoder().decode(data.payload);
+      const messageText = stringify({
+        message: message
+      });
+      return Result.ok({
+        message: message,
+        text: `meshtastic.Data:\n${dataText}\n\nText:\n${messageText}`,
+      });
+    }
+
+    const schema = parsers.get(data.portnum);
+    if (schema === undefined) {
+      return Result.nyi();
+    }
+
+    const message = Protobufs.fromBinary(schema, data.payload);
+    const messageJson = Protobufs.toJson(schema, message);
+    const messageText = stringify(messageJson);
 
     return Result.ok({
       message: message,
-      text: `meshtastic.Data:\n${dataText}\n\n${typ.typeName}:\n${messageText}`,
+      text: `meshtastic.Data:\n${dataText}\n\n${schema.typeName}:\n${messageText}`,
     });
   } catch (error) {
     return Result.err(error);
@@ -161,7 +159,7 @@ function parseData(data) {
 export function parse(message) {
   var se;
   try {
-    se = Protobufs.Mqtt.ServiceEnvelope.fromBinary(message.payloadBytes);
+    se = Protobufs.fromBinary(Protobufs.Mqtt.ServiceEnvelopeSchema, message.payloadBytes);
   } catch (error) {
     return {
       se: Result.err(new Error(
@@ -212,7 +210,7 @@ export function parse(message) {
   if (se.packet.payloadVariant.case == 'encrypted') {
     try {
       const decrypted = Crypto.decrypt(se.packet, Crypto.defaultKey);
-      data = Protobufs.Mesh.Data.fromBinary(decrypted);
+      data = Protobufs.fromBinary(Protobufs.Mesh.DataSchema, decrypted);
     } catch (error) {
       return {
         se: Result.ok(se),

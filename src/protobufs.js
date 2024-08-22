@@ -1,3 +1,5 @@
+export { fromBinary, toJson } from "@bufbuild/protobuf";
+
 export * as Admin from "@buf/meshtastic_protobufs.bufbuild_es/meshtastic/admin_pb.js";
 export * as AppOnly from "@buf/meshtastic_protobufs.bufbuild_es/meshtastic/apponly_pb.js";
 export * as CannedMessages from "@buf/meshtastic_protobufs.bufbuild_es/meshtastic/cannedmessages_pb.js";
